@@ -38,12 +38,14 @@ void PiddEdx::PreInit() {
 void PiddEdx::Init(std::map<std::string, void *> &Map) {
   tracks_ = static_cast<AnalysisTree::TrackDetector *>(Map.at(tracks_branch_));
 
+  /* Input */
   auto tracks_config = config_->GetBranchConfig(tracks_->GetId());
   dedx_field_id_ = tracks_config.GetFieldId(dedx_field_name_);
   charge_field_id_ = tracks_config.GetFieldId("q");
 
-  auto rec_particle_config = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
-  out_config_->AddBranchConfig(rec_particle_config);
+  /* Output */
+  rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
+  out_config_->AddBranchConfig(rec_particle_config_);
 
   rec_particles_ = new AnalysisTree::Particles;
   out_tree_->Branch(out_branch_.c_str(), "AnalysisTree::Particles", &rec_particles_);
@@ -51,7 +53,7 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
 
 void PiddEdx::Exec() {
 
-  auto& particle_config = out_config_->GetBranchConfig(out_branch_);
+  auto& particle_config = rec_particle_config_;
 
   rec_particles_->ClearChannels();
 
@@ -66,6 +68,7 @@ void PiddEdx::Exec() {
       particle->Init(particle_config);
       particle->SetMomentum3(track.GetMomentum3());
       particle->SetPid(pid);
+      particle->SetMass();
     }
   }
 

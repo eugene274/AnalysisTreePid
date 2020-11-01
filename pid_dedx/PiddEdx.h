@@ -12,7 +12,7 @@
 #include <pid/Getter.h>
 #include <AnalysisTree/Detector.hpp>
 
-class PiddEdx : public UserTask {
+class PiddEdx : public UserFillTask {
 
 public:
   void Init(std::map<std::string, void *> &Map) override;
@@ -40,9 +40,9 @@ private:
   int charge_field_id_{-1};
 
   AnalysisTree::Particles *rec_particles_{nullptr};
+  AnalysisTree::BranchConfig rec_particle_config_;
 
-
-  TASK_DEF(PiddEdx, 0)
+TASK_DEF(PiddEdx, 0)
 };
 
 #endif //ATPIDTASK_PID_DEDX_PIDDEDX_H
