@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.17)
+cmake_minimum_required(VERSION 3.11)
 project(ATPidTask)
 
 set(CMAKE_CXX_STANDARD 17)
@@ -13,6 +13,8 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(ATTaskSkeleton)
 
+
+set(Pid_BUILD_NEW ON)
 FetchContent_Declare(
         Pid
         GIT_REPOSITORY git@git.cbm.gsi.de:pwg-c2f/analysis/pid.git

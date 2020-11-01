@@ -68,7 +68,6 @@ void PiddEdx::Exec() {
       particle->Init(particle_config);
       particle->SetMomentum3(track.GetMomentum3());
       particle->SetPid(pid);
-      particle->SetMass();
     }
   }
 
