@@ -56,6 +56,7 @@ private:
   short i_nhits_pot_mtpc_;
   short i_nhits_pot_vtpc2_;
   short i_nhits_pot_vtpc1_;
+  short y_field_id_;
 
 TASK_DEF(PiddEdx, 0)
 };

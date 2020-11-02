@@ -57,7 +57,9 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   /* Output */
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
   rec_particle_config_.AddField<float>("y_cm");
+  rec_particle_config_.AddField<float>("y");
   y_cm_field_id_ = rec_particle_config_.GetFieldId("y_cm");
+  y_field_id_ = rec_particle_config_.GetFieldId("y");
 
   rec_particle_config_.AddField<float>("dcax");
   rec_particle_config_.AddField<float>("dcay");
@@ -103,7 +105,8 @@ void PiddEdx::Exec() {
 
       /* y_cm */
       momentum.SetVectM(track.GetMomentum3(), mass);
-      particle->SetField<float>(momentum.Rapidity() - data_header_->GetBeamRapidity(), y_cm_field_id_);
+      particle->SetField<float>(momentum.Rapidity(), y_field_id_);
+      particle->SetField<float>(momentum.Rapidity() - data_header_->GetBeamRapidity()/2., y_cm_field_id_);
 
       /* dca_x, dca_y */
       particle->SetField<float>(track.GetField<float>(i_dca_x_field_id_), o_dca_x_field_id_);
@@ -119,7 +122,7 @@ void PiddEdx::Exec() {
             track.GetField<int>(i_nhits_pot_mtpc_);
         particle->SetField(nhits_total, o_nhits_total_);
         particle->SetField(nhits_pot_total, o_nhits_pot_total_);
-        particle->SetField(nhits_total/float(nhits_pot_total), o_nhits_ratio_);
+        particle->SetField(float(nhits_total)/float(nhits_pot_total), o_nhits_ratio_);
       }
 
     }
