@@ -67,16 +67,18 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   o_dca_y_field_id_ = rec_particle_config_.GetFieldId("dcay");
 
   rec_particle_config_.AddField<int>("nhits_total");
+  rec_particle_config_.AddField<int>("nhits_vtpc");
   rec_particle_config_.AddField<int>("nhits_pot_total");
   rec_particle_config_.AddField<float>("nhits_ratio");
   o_nhits_total_ = rec_particle_config_.GetFieldId("nhits_total");
+  o_nhits_vtpc_ = rec_particle_config_.GetFieldId("nhits_vtpc");
   o_nhits_pot_total_ = rec_particle_config_.GetFieldId("nhits_pot_total");
   o_nhits_ratio_ = rec_particle_config_.GetFieldId("nhits_ratio");
 
   out_config_->AddBranchConfig(rec_particle_config_);
 
   rec_particles_ = new AnalysisTree::Particles;
-  out_tree_->Branch(out_branch_.c_str(), "AnalysisTree::Particles", &rec_particles_);
+  out_tree_->Branch(out_branch_.c_str(), &rec_particles_);
 }
 
 void PiddEdx::Exec() {
@@ -106,7 +108,7 @@ void PiddEdx::Exec() {
       /* y_cm */
       momentum.SetVectM(track.GetMomentum3(), mass);
       particle->SetField<float>(momentum.Rapidity(), y_field_id_);
-      particle->SetField<float>(momentum.Rapidity() - data_header_->GetBeamRapidity()/2., y_cm_field_id_);
+      particle->SetField<float>(momentum.Rapidity() - data_header_->GetBeamRapidity(), y_cm_field_id_);
 
       /* dca_x, dca_y */
       particle->SetField<float>(track.GetField<float>(i_dca_x_field_id_), o_dca_x_field_id_);
@@ -117,10 +119,15 @@ void PiddEdx::Exec() {
         int nhits_total = track.GetField<int>(i_nhits_vtpc1_) +
             track.GetField<int>(i_nhits_vtpc2_) +
             track.GetField<int>(i_nhits_mtpc_);
+        int nhits_vtpc =
+            track.GetField<int>(i_nhits_vtpc1_) +
+            track.GetField<int>(i_nhits_vtpc2_);
+
         int nhits_pot_total = track.GetField<int>(i_nhits_pot_vtpc1_) +
             track.GetField<int>(i_nhits_pot_vtpc2_) +
             track.GetField<int>(i_nhits_pot_mtpc_);
         particle->SetField(nhits_total, o_nhits_total_);
+        particle->SetField<int>(nhits_vtpc, o_nhits_vtpc_);
         particle->SetField(nhits_pot_total, o_nhits_pot_total_);
         particle->SetField(float(nhits_total)/float(nhits_pot_total), o_nhits_ratio_);
       }

@@ -50,14 +50,15 @@ private:
   short o_nhits_total_;
   short o_nhits_pot_total_;
   short o_nhits_ratio_;
+  short o_nhits_vtpc_;
   short i_nhits_mtpc_;
   short i_nhits_vtpc2_;
   short i_nhits_vtpc1_;
   short i_nhits_pot_mtpc_;
   short i_nhits_pot_vtpc2_;
   short i_nhits_pot_vtpc1_;
-  short y_field_id_;
 
+  short y_field_id_;
 TASK_DEF(PiddEdx, 0)
 };
 
