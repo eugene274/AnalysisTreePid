@@ -1,0 +1,12 @@
+//
+// Created by eugene on 09/02/2021.
+//
+
+#ifndef ATPIDTASK_PID_MATCHING_PIDMATCHING_HPP_
+#define ATPIDTASK_PID_MATCHING_PIDMATCHING_HPP_
+
+class PidMatching {
+
+};
+
+#endif //ATPIDTASK_PID_MATCHING_PIDMATCHING_HPP_

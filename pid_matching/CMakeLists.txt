@@ -1,0 +1,2 @@
+add_executable(PidSimMatching PidMatching.cpp PidMatching.hpp)
+target_link_libraries(PidSimMatching PUBLIC at_task_main)
