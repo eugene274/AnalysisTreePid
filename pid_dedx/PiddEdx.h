@@ -12,6 +12,10 @@
 #include <pid/Getter.h>
 #include <AnalysisTree/Detector.hpp>
 
+
+/**
+ * @brief Takes dEdx PID from PID Getter
+ */
 class PiddEdx : public UserFillTask {
 
 public:
