@@ -7,8 +7,11 @@
 #include <AnalysisTree/Matching.hpp>
 #include <AnalysisTree/DataHeader.hpp>
 #include <pid_new/core/PdgHelper.h>
+
+#include <TFile.h>
 #include <TTree.h>
 #include <TLorentzVector.h>
+#include <TH2.h>
 
 TASK_IMPL(PidMatching)
 
@@ -31,6 +34,8 @@ void PidMatching::PostFinish() {
   cout << __func__ << endl;
 }
 void PidMatching::Init(std::map<std::string, void *> &map) {
+  InitEfficiencies();
+
   matching_ptr_ = static_cast<Matching *>(map["VtxTracks2SimTracks"]);
   vtx_tracks_ptr = static_cast<AnalysisTree::TrackDetector *>(map["VtxTracks"]);
   sim_track_ptr = static_cast<AnalysisTree::TrackDetector *>(map["SimTracks"]);
@@ -135,7 +140,30 @@ void PidMatching::Exec() {
     particle->SetField<float>(sim_momentum.Phi(), o_sim_phi_);
 
 
-  } // particles
+  } // matched particles
+
+  for (size_t i_t = 0; i_t < sim_track_ptr->GetNumberOfChannels(); ++i_t) {
+    auto channel = sim_track_ptr->GetChannel(i_t);
+
+    auto pdg = channel.GetField<int>(sim_track_pdg_id_);
+    if (
+        efficiencies_y_pt.find(pdg) != efficiencies_y_pt.end()
+        // TODO check if matched vtx track fulfills specified cuts
+        ) {
+      auto matches_inv = matching_ptr_->GetMatches(true);
+      bool match_found = matches_inv.find(i_t) != matches_inv.end();
+
+
+      sim_momentum = channel.Get4Momentum(pdg);
+      efficiencies_y_pt[pdg]->Fill(match_found,
+                                   sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+                                   sim_momentum.Pt());
+      efficiencies_phi_y[pdg]->Fill(match_found,
+                                    sim_momentum.Phi(),
+                                    sim_momentum.Rapidity() - data_header_->GetBeamRapidity());
+
+    }
+  } // sim tracks
 
 
 
@@ -144,5 +172,38 @@ void PidMatching::Exec() {
        << " vertex tracks" << endl;
 }
 void PidMatching::Finish() {
-  cout << __func__ << endl;
+  auto cwd = gDirectory;
+
+  for (auto &efficiency_entry : efficiencies_y_pt) {
+    efficiency_entry.second->GetDirectory()->cd();
+    efficiency_entry.second->Write();
+  }
+  for (auto &efficiency_entry : efficiencies_phi_y) {
+    efficiency_entry.second->GetDirectory()->cd();
+    efficiency_entry.second->Write();
+  }
+
+  cwd->cd();
+}
+
+void PidMatching::InitEfficiencies() {
+  auto cwd = gDirectory;
+
+  for (int pdg : {211, -211, 2212}) {
+    auto efficiency_dir = out_file_->mkdir(Form("efficiency_%d", pdg), "", true);
+
+    auto efficiency_y_py = new TEfficiency("efficiency_y_pt", "Tracking efficiency;#it{y}_{CM};p_{T} (GeV/c);#epsilon",
+                                           12, -2., 4.,
+                                           10, 0., 2.);
+    efficiency_y_py->SetDirectory(efficiency_dir);
+    efficiencies_y_pt.emplace(pdg, efficiency_y_py);
+
+    auto efficiency_phi_y = new TEfficiency("efficiency_phi_y", "Tracking efficiency;#phi (rad);#it{y}_{CM};#epsilon",
+                                            20, -4, 4,
+                                            10, -2, 4);
+    efficiency_phi_y->SetDirectory(efficiency_dir);
+    efficiencies_phi_y.emplace(pdg, efficiency_phi_y);
+  }
+
+  cwd->cd();
 }

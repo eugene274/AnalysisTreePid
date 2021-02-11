@@ -13,6 +13,8 @@
 #include <AnalysisTree/Particle.hpp>
 #include <AnalysisTree/BranchConfig.hpp>
 
+#include <TEfficiency.h>
+
 class PidMatching : public UserFillTask {
 
  public:
@@ -25,12 +27,20 @@ class PidMatching : public UserFillTask {
   void Finish() override;
 
  private:
+
+  void InitEfficiencies();
+
   AnalysisTree::Matching *matching_ptr_{nullptr};
   AnalysisTree::TrackDetector *vtx_tracks_ptr{nullptr};
   AnalysisTree::TrackDetector *sim_track_ptr{nullptr};
 
   AnalysisTree::BranchConfig matched_particles_config_{"MatchedVtxTracks", AnalysisTree::DetType::kParticle};
   AnalysisTree::Particles  *matched_particles_{nullptr};
+
+
+  std::map<int, TEfficiency *> efficiencies_y_pt;
+  std::map<int, TEfficiency *> efficiencies_phi_y;
+
 
 
 
