@@ -130,9 +130,9 @@ void PidMatching::Exec() {
     }
 
     /* matched sim track kinematics */
-    particle->SetField<float>(o_sim_y_cm_, sim_momentum.Rapidity() - data_header_->GetBeamRapidity());
-    particle->SetField<float>(o_sim_pt_, sim_momentum.Pt());
-    particle->SetField<float>(o_sim_phi_, sim_momentum.Phi());
+    particle->SetField<float>(sim_momentum.Rapidity() - data_header_->GetBeamRapidity(), o_sim_y_cm_);
+    particle->SetField<float>(sim_momentum.Pt(), o_sim_pt_);
+    particle->SetField<float>(sim_momentum.Phi(), o_sim_phi_);
 
 
   } // particles
