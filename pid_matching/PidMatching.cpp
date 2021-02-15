@@ -61,48 +61,38 @@ void PidMatching::Init(std::map<std::string, void *> &map) {
   auto vtx_tracks_config = config_->GetBranchConfig("VtxTracks");
 
   /* input config */
-  sim_track_pdg_id_ = config_->GetBranchConfig("SimTracks").GetFieldId("pdg");
+  sim_track_pdg_id_ = VarId("SimTracks/pdg");
 
-  i_dca_x_field_id_ = config_->GetBranchConfig("VtxTracks").GetFieldId("dcax");
-  i_dca_y_field_id_ = config_->GetBranchConfig("VtxTracks").GetFieldId("dcay");
+  i_dca_x_field_id_ = VarId("VtxTracks/dcax");
+  i_dca_y_field_id_ = VarId("VtxTracks/dcay");
 
-  i_nhits_vtpc1_ = vtx_tracks_config.GetFieldId("nhits_vtpc1");
-  i_nhits_vtpc2_ = vtx_tracks_config.GetFieldId("nhits_vtpc2");
-  i_nhits_mtpc_ = vtx_tracks_config.GetFieldId("nhits_mtpc");
-  i_nhits_pot_vtpc1_ = vtx_tracks_config.GetFieldId("nhits_pot_vtpc1");
-  i_nhits_pot_vtpc2_ = vtx_tracks_config.GetFieldId("nhits_pot_vtpc2");
-  i_nhits_pot_mtpc_ = vtx_tracks_config.GetFieldId("nhits_pot_mtpc");
-  i_charge = vtx_tracks_config.GetFieldId("q");
+  i_nhits_vtpc1_ = VarId("VtxTracks/nhits_vtpc1");
+  i_nhits_vtpc2_ = VarId("VtxTracks/nhits_vtpc2");
+  i_nhits_mtpc_ = VarId("VtxTracks/nhits_mtpc");
+  i_nhits_pot_vtpc1_ = VarId("VtxTracks/nhits_pot_vtpc1");
+  i_nhits_pot_vtpc2_ = VarId("VtxTracks/nhits_pot_vtpc2");
+  i_nhits_pot_mtpc_ = VarId("VtxTracks/nhits_pot_mtpc");
+  i_charge = VarId("VtxTracks/q");
 
   /* output config */
-  matched_particles_config_.AddField<float>("y_cm");
-  matched_particles_config_.AddField<float>("y");
-  y_cm_field_id_ = matched_particles_config_.GetFieldId("y_cm");
-  y_field_id_ = matched_particles_config_.GetFieldId("y");
+  NewBranch("MatchedVtxTracks", AnalysisTree::DetType::kParticle);
+  y_cm_field_id_ = NewVar<float>("MatchedVtxTracks/y_cm");
+  y_field_id_ = NewVar<float>("MatchedVtxTracks/y");
 
-  matched_particles_config_.AddField<float>("dcax");
-  matched_particles_config_.AddField<float>("dcay");
-  o_dca_x_field_id_ = matched_particles_config_.GetFieldId("dcax");
-  o_dca_y_field_id_ = matched_particles_config_.GetFieldId("dcay");
+  o_dca_x_field_id_ = NewVar<float>("MatchedVtxTracks/dcax");
+  o_dca_y_field_id_ = NewVar<float>("MatchedVtxTracks/dcay");
 
-  matched_particles_config_.AddField<int>("nhits_total");
-  matched_particles_config_.AddField<int>("nhits_vtpc");
-  matched_particles_config_.AddField<int>("nhits_pot_total");
-  matched_particles_config_.AddField<float>("nhits_ratio");
-  o_nhits_total_ = matched_particles_config_.GetFieldId("nhits_total");
-  o_nhits_vtpc_ = matched_particles_config_.GetFieldId("nhits_vtpc");
-  o_nhits_pot_total_ = matched_particles_config_.GetFieldId("nhits_pot_total");
-  o_nhits_ratio_ = matched_particles_config_.GetFieldId("nhits_ratio");
+  o_nhits_total_ = NewVar<int>("MatchedVtxTracks/nhits_total");
+  o_nhits_vtpc_ = NewVar<int>("MatchedVtxTracks/nhits_vtpc");
+  o_nhits_pot_total_ = NewVar<int>("MatchedVtxTracks/nhits_pot_total");
+  o_nhits_ratio_ = NewVar<float>("MatchedVtxTracks/nhits_ratio");
 
   /* parameters of the matched sim track */
-  matched_particles_config_.AddField<float>("sim_y_cm");
-  o_sim_y_cm_ = matched_particles_config_.GetFieldId("sim_y_cm");
-  matched_particles_config_.AddField<float>("sim_pt");
-  o_sim_pt_ = matched_particles_config_.GetFieldId("sim_pt");
-  matched_particles_config_.AddField<float>("sim_phi");
-  o_sim_phi_ = matched_particles_config_.GetFieldId("sim_phi");
+  o_sim_y_cm_ = NewVar<float>("MatchedVtxTracks/sim_y_cm");
+  o_sim_pt_ = NewVar<float>("MatchedVtxTracks/sim_pt");
+  o_sim_phi_ = NewVar<float>("MatchedVtxTracks/sim_phi");
 
-  out_config_->AddBranchConfig(matched_particles_config_);
+  matched_particles_config_ = out_config_->GetBranchConfig("MatchedVtxTracks");
 
   matched_particles_ = new AnalysisTree::Particles;
   out_tree_->Branch("MatchedVtxTracks", &matched_particles_);

@@ -36,7 +36,7 @@ class PidMatching : public UserFillTask {
   AnalysisTree::TrackDetector *vtx_tracks_ptr{nullptr};
   AnalysisTree::TrackDetector *sim_track_ptr{nullptr};
 
-  AnalysisTree::BranchConfig matched_particles_config_{"MatchedVtxTracks", AnalysisTree::DetType::kParticle};
+  AnalysisTree::BranchConfig matched_particles_config_;
   AnalysisTree::Particles  *matched_particles_{nullptr};
 
 
