@@ -14,7 +14,12 @@
 #include <TLorentzVector.h>
 #include <TH2.h>
 
-TASK_IMPL(PidMatching)
+bool PidMatching::opts_loaded = false;
+std::string PidMatching::qa_file_name = "efficiency.root";
+bool PidMatching::save_canvases = false;
+
+TASK_IMPL(PidMatching_NoCuts)
+TASK_IMPL(PidMatching_StandardCuts)
 
 using std::cout;
 using std::endl;
@@ -42,7 +47,15 @@ struct PidMatching::ChargedHadronsEfficiencyStruct {
 
 boost::program_options::options_description PidMatching::GetBoostOptions() {
   namespace po = boost::program_options;
-  cout << __func__ << endl;
+
+  if (!opts_loaded) {
+    opts_loaded = true;
+    po::options_description desc;
+    desc.add_options()
+        ("save-canvases", po::value(&save_canvases)->default_value(false), "Save canvases")
+        ("qa-file-name", po::value(&qa_file_name)->default_value("efficiency_qa.root"));
+    return desc;
+  }
   return {};
 }
 
@@ -58,7 +71,10 @@ void PidMatching::Init(std::map<std::string, void *> &map) {
   vtx_tracks_ptr = static_cast<AnalysisTree::TrackDetector *>(map["VtxTracks"]);
   sim_track_ptr = static_cast<AnalysisTree::TrackDetector *>(map["SimTracks"]);
 
-  auto vtx_tracks_config = config_->GetBranchConfig("VtxTracks");
+  auto simTracksConfig = config_->GetBranchConfig("SimTracks");
+  simTracksConfig.Print();
+
+
 
   /* input config */
   sim_track_pdg_id_ = VarId("SimTracks/pdg");
@@ -73,6 +89,8 @@ void PidMatching::Init(std::map<std::string, void *> &map) {
   i_nhits_pot_vtpc2_ = VarId("VtxTracks/nhits_pot_vtpc2");
   i_nhits_pot_mtpc_ = VarId("VtxTracks/nhits_pot_mtpc");
   i_charge = VarId("VtxTracks/q");
+
+  i_sim_mother_id = VarId("SimTracks/mother_id");
 
   /* output config */
   NewBranch("MatchedVtxTracks", AnalysisTree::DetType::kParticle);
@@ -149,9 +167,10 @@ void PidMatching::Exec() {
     particle->SetField<float>(sim_momentum.Phi(), o_sim_phi_);
 
     if (efficiencies.find(pdg) != efficiencies.end()) {
-      efficiencies[pdg]->matched_tracks_y_pt->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                                   vtx_momentum.Pt());
-
+      if (CheckVtxTrack(vtx_track)) {
+        efficiencies[pdg]->matched_tracks_y_pt->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+                                                     vtx_momentum.Pt());
+      }
     }
 
   } // matched particles
@@ -162,6 +181,8 @@ void PidMatching::Exec() {
   for (size_t i_t = 0; i_t < sim_track_ptr->GetNumberOfChannels(); ++i_t) {
     auto channel = sim_track_ptr->GetChannel(i_t);
 
+    if (!CheckSimTrack(channel)) continue;
+
     auto pdg = channel.GetField<int>(sim_track_pdg_id_);
     if (efficiencies.find(pdg) != efficiencies.end()) {
       sim_momentum = channel.Get4Momentum(pdg);
@@ -169,7 +190,8 @@ void PidMatching::Exec() {
                                                sim_momentum.Pt());
 
       /* lookup for match */
-      auto has_matched_vtx_track = match_inv.find(i_t) != match_inv.end();
+      auto has_matched_vtx_track = match_inv.find(i_t) != match_inv.end()
+          && CheckVtxTrack(vtx_tracks_ptr->GetChannel(match_inv.at(i_t)));
       efficiencies[pdg]->efficiency_y_pt_filled->Fill(has_matched_vtx_track,
                                                       sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                       sim_momentum.Pt());
@@ -180,11 +202,15 @@ void PidMatching::Exec() {
     auto channel = vtx_tracks_ptr->GetChannel(i_t);
     auto momentum = channel.GetMomentum3();
 
-    auto has_matching_sim_track = match.find(i_t) != match.end();
-    charged_hadrons_efficiency->eta_pt_vtx_tracks->Fill(has_matching_sim_track, momentum.Eta(), momentum.Pt());
+    if (CheckVtxTrack(channel)) {
+      auto has_matching_sim_track = match.find(i_t) != match.end();
+      charged_hadrons_efficiency->eta_pt_vtx_tracks->Fill(has_matching_sim_track, momentum.Eta(), momentum.Pt());
 
-    if (channel.GetField<int>(i_charge) < 0) {
-      charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->Fill(has_matching_sim_track, momentum.Eta(), momentum.Pt());
+      if (channel.GetField<int>(i_charge) < 0) {
+        charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->Fill(has_matching_sim_track, momentum.Eta(), momentum.Pt());
+      } else if (channel.GetField<int>(i_charge) > 0) {
+        charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->Fill(has_matching_sim_track, momentum.Eta(), momentum.Pt());
+      }
     }
 
   } // vtx tracks
@@ -217,42 +243,57 @@ void PidMatching::Finish() {
     efficiency->efficiency_y_pt_from_hists->Write("efficiency_y_pt_from_hists");
     efficiency->efficiency_y_pt_filled->Write("efficiency_y_pt_filled");
 
-    auto c = new TCanvas;
-    c->Divide(2, 1);
-    c->cd(1);
-    efficiency->efficiency_y_pt_from_hists->SetMarkerSize(0.5);
-    efficiency->efficiency_y_pt_from_hists->DrawClone("colz,text");
-    c->cd(2);
-    efficiency->efficiency_y_pt_filled->SetMarkerSize(0.5);
-    efficiency->efficiency_y_pt_filled->DrawClone("colz,text");
-    c->Write("efficiency_methods");
+    if (save_canvases) {
+      auto c = new TCanvas;
+      c->Divide(2, 1);
+      c->cd(1);
+      efficiency->efficiency_y_pt_from_hists->SetMarkerSize(0.5);
+      efficiency->efficiency_y_pt_from_hists->DrawClone("colz,text");
+      c->cd(2);
+      efficiency->efficiency_y_pt_filled->SetMarkerSize(0.5);
+      efficiency->efficiency_y_pt_filled->DrawClone("colz,text");
+      c->Write("efficiency_methods");
+    }
+
   }
 
   {
     charged_hadrons_efficiency->output_dir->cd();
     charged_hadrons_efficiency->eta_pt_vtx_tracks->Write();
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->Write();
-    auto c = new TCanvas;
-    charged_hadrons_efficiency->eta_pt_vtx_tracks->DrawClone("colz,text");
-    c->Write("c_efficiency_all_hadrons");
-    charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->DrawClone("colz,text");
-    c->Write("c_efficiency_neg");
+    charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->Write();
+    if (save_canvases) {
+      auto c = new TCanvas;
+      charged_hadrons_efficiency->eta_pt_vtx_tracks->DrawClone("colz,text");
+      c->Write("c_efficiency_all_hadrons");
+      charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->DrawClone("colz,text");
+      c->Write("c_efficiency_neg");
+      charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->DrawClone("colz,text");
+      c->Write("c_efficiency_pos");
+    }
   }
   cwd->cd();
 }
 void PidMatching::PostFinish() {
   cout << __func__ << endl;
 
+  if (qa_file_) {
+    qa_file_->Close();
+    delete qa_file_;
+  }
+
 }
 
 void PidMatching::InitEfficiencies() {
   auto cwd = gDirectory;
 
+  qa_file_ = TFile::Open(qa_file_name.c_str(), "RECREATE");
+
   for (int pdg : {211, -211, 2212}) {
     auto qa_struct = new PidEfficiencyQAStruct;
     efficiencies.emplace(pdg, qa_struct);
 
-    qa_struct->output_dir = out_file_->mkdir(Form("efficiency_%d", pdg), "", true);
+    qa_struct->output_dir = qa_file_->mkdir(Form("efficiency_%d", pdg), "", true);
     qa_struct->output_dir->cd();
 
     qa_struct->matched_tracks_y_pt = new TH2D("matched_tracks_y_pt",
@@ -270,14 +311,16 @@ void PidMatching::InitEfficiencies() {
 
   {
     charged_hadrons_efficiency = new ChargedHadronsEfficiencyStruct;
-    charged_hadrons_efficiency->output_dir = out_file_->mkdir("efficiency_charged_hadrons", "", true);
+    charged_hadrons_efficiency->output_dir = qa_file_->mkdir("efficiency_charged_hadrons", "", true);
     charged_hadrons_efficiency->eta_pt_vtx_tracks = new TEfficiency("efficiency_all_tracks",
                                                                     "N (VtxTracks) / N (Matched VtxTracks);#eta;p_{T} (GeV/c)",
-                                                                    16, 0., 8.,
-                                                                    15, 0., 3.);
+                                                                    16,0.,8.,
+                                                                    15,0.,3.);
     charged_hadrons_efficiency->eta_pt_vtx_tracks->SetMarkerSize(0.5);
-    charged_hadrons_efficiency->eta_pt_vtx_tracks_neg = (TEfficiency*) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_neg");
-
+    charged_hadrons_efficiency->eta_pt_vtx_tracks_neg =
+        (TEfficiency *) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_neg");
+    charged_hadrons_efficiency->eta_pt_vtx_tracks_pos =
+        (TEfficiency *) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_pos");
   }
 
 
