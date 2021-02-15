@@ -27,6 +27,8 @@ class PidMatching : public UserFillTask {
   void Finish() override;
 
  private:
+  struct PidEfficiencyQAStruct;
+  struct ChargedHadronsEfficiencyStruct;
 
   void InitEfficiencies();
 
@@ -38,8 +40,8 @@ class PidMatching : public UserFillTask {
   AnalysisTree::Particles  *matched_particles_{nullptr};
 
 
-  std::map<int, TEfficiency *> efficiencies_y_pt;
-  std::map<int, TEfficiency *> efficiencies_phi_y;
+  std::map<int, PidEfficiencyQAStruct *> efficiencies;
+  ChargedHadronsEfficiencyStruct *charged_hadrons_efficiency{nullptr};
 
 
 
@@ -66,6 +68,7 @@ class PidMatching : public UserFillTask {
   short o_sim_y_cm_;
   short o_sim_pt_;
   short o_sim_phi_;
+  int i_charge;
 };
 
 #endif //ATPIDTASK_PID_MATCHING_PIDMATCHING_HPP_
