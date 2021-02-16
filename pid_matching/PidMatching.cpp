@@ -167,7 +167,7 @@ void PidMatching::Exec() {
     particle->SetField<float>(sim_momentum.Phi(), o_sim_phi_);
 
     if (efficiencies.find(pdg) != efficiencies.end()) {
-      if (CheckVtxTrack(vtx_track)) {
+      if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
         efficiencies[pdg]->matched_tracks_y_pt->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                      vtx_momentum.Pt());
       }
