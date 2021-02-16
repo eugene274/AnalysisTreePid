@@ -18,7 +18,7 @@
 #include <TH3.h>
 
 #include "TEfficiencyHelper.hpp"
-#include "FancyEfficiency.hpp"
+#include "PlotEfficiencies.hpp"
 
 bool PidMatching::opts_loaded = false;
 std::string PidMatching::qa_file_name = "efficiency.root";
