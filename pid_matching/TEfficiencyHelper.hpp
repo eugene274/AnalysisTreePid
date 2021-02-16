@@ -30,11 +30,32 @@ ProjectEfficiency(TEfficiency *eff) {
     auto x_axis = total_histo->GetXaxis();
     auto y_axis = total_histo->GetYaxis();
 
+    /* export as-is */
+    auto h2 = new TProfile2D(
+        Form("%s_prof", eff->GetName()),
+        eff->GetTitle(),
+        x_axis->GetNbins(), x_axis->GetXmin(), x_axis->GetXmax(),
+        y_axis->GetNbins(), y_axis->GetXmin(), y_axis->GetXmax());
+    h2->SetDirectory(nullptr);
+
+    for (int ix = 1; ix < x_axis->GetNbins(); ++ix) {
+      for (int iy = 1; iy < y_axis->GetNbins(); ++iy) {
+        auto xc = x_axis->GetBinCenter(ix);
+        auto yc = y_axis->GetBinCenter(iy);
+        bool is_any_passed = passed_histo->GetBinContent(ix, iy) > 0;
+        if (is_any_passed)
+          h2->Fill(xc, yc, eff->GetEfficiency(eff->GetGlobalBin(ix, iy)));
+      }
+    }
+    list->Add(h2);
+
     for (int ix = 1; ix < x_axis->GetNbins(); ++ix) {
       auto h1 = new TProfile(
           Form("%s_%d", eff->GetName(), ix),
-          "",
+          Form("%s;  '%s' bin [%f, %f]", eff->GetTitle(), x_axis->GetTitle(),
+               x_axis->GetBinLowEdge(ix), x_axis->GetBinUpEdge(ix)),
           y_axis->GetNbins(), y_axis->GetXmin(), y_axis->GetXmax());
+      h1->GetXaxis()->SetTitle(y_axis->GetTitle());
       h1->SetDirectory(nullptr);
 
       for (int iy = 1; iy < y_axis->GetNbins(); ++iy) {
