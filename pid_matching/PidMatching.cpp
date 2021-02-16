@@ -298,13 +298,13 @@ void PidMatching::InitEfficiencies() {
 
     qa_struct->matched_tracks_y_pt = new TH2D("matched_tracks_y_pt",
                                               "Matched tracks;#it{y}_{CM};p_{T} (GeV/c)",
-                                              15, -2., 4.,
+                                              30, -2., 4.,
                                               15, 0., 3.);
     qa_struct->sim_tracks_y_pt = (TH2 *) qa_struct->matched_tracks_y_pt->Clone("sim_tracks_y_pt");
 
     qa_struct->efficiency_y_pt_filled = new TEfficiency("efficiency_filled",
                                                         "N (Matched SimTracks) / N(SimTracks);#it{y}_{CM};p_{T} (GeV/c)",
-                                                        15, -2., 4.,
+                                                        30, -2., 4.,
                                                         15, 0., 3.);
 
   }

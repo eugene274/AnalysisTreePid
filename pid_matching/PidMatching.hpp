@@ -108,10 +108,10 @@ class PidMatching_StandardCuts : public PidMatching {
         track.GetField<int>(i_nhits_pot_vtpc2_) +
         track.GetField<int>(i_nhits_pot_mtpc_);
 
-    float ratio_nhits_nhits_pot = float(nhits_total) / nhits_pot_total;
+    float ratio_nhits_nhits_pot = float(nhits_total) / float(nhits_pot_total);
 
-    float dca_x = track.GetField<float>(i_dca_x_field_id_);
-    float dca_y = track.GetField<float>(i_dca_y_field_id_);
+    auto dca_x = track.GetField<float>(i_dca_x_field_id_);
+    auto dca_y = track.GetField<float>(i_dca_y_field_id_);
 
 
     return
