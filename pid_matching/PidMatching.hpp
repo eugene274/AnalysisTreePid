@@ -12,6 +12,7 @@
 #include <AnalysisTree/Detector.hpp>
 #include <AnalysisTree/Particle.hpp>
 #include <AnalysisTree/BranchConfig.hpp>
+#include <AnalysisTree/EventHeader.hpp>
 
 #include <TEfficiency.h>
 
@@ -35,6 +36,7 @@ class PidMatching : public UserFillTask {
   AnalysisTree::Matching *matching_ptr_{nullptr};
   AnalysisTree::TrackDetector *vtx_tracks_ptr{nullptr};
   AnalysisTree::TrackDetector *sim_track_ptr{nullptr};
+  AnalysisTree::EventHeader *centrality_ptr{nullptr};
 
   AnalysisTree::BranchConfig matched_particles_config_;
   AnalysisTree::Particles  *matched_particles_{nullptr};
@@ -77,6 +79,7 @@ class PidMatching : public UserFillTask {
   int i_charge;
 
   short i_sim_mother_id;
+  short i_centrality_id;
 };
 
 class PidMatching_NoCuts : public PidMatching {

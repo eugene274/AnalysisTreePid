@@ -6,6 +6,7 @@
 #include <boost/program_options.hpp>
 #include <AnalysisTree/Matching.hpp>
 #include <AnalysisTree/DataHeader.hpp>
+#include <AnalysisTree/EventHeader.hpp>
 #include <pid_new/core/PdgHelper.h>
 
 #include <TFile.h>
@@ -13,6 +14,11 @@
 #include <TCanvas.h>
 #include <TLorentzVector.h>
 #include <TH2.h>
+#include <TAxis.h>
+#include <TH3.h>
+
+#include "TEfficiencyHelper.hpp"
+#include "FancyEfficiency.hpp"
 
 bool PidMatching::opts_loaded = false;
 std::string PidMatching::qa_file_name = "efficiency.root";
@@ -32,8 +38,14 @@ struct PidMatching::PidEfficiencyQAStruct {
   TH2 *matched_tracks_y_pt{nullptr};
   TH2 *sim_tracks_y_pt{nullptr};
 
-  TEfficiency *efficiency_y_pt_from_hists{nullptr};
-  TEfficiency *efficiency_y_pt_filled{nullptr};
+  TH3 *matched_tracks_centr_y_pt{nullptr};
+  TH3 *sim_tracks_centr_y_pt{nullptr};
+
+  TEfficiency *vtx_sim_y_pt{nullptr};
+  TEfficiency *matched_sim_sim_y_pt{nullptr};
+
+  TEfficiency *vtx_sim_centr_y_pt{nullptr};
+  TEfficiency *matched_sim_sim_centr_y_pt{nullptr};
 
 };
 
@@ -44,6 +56,8 @@ struct PidMatching::ChargedHadronsEfficiencyStruct {
   TEfficiency *eta_pt_vtx_tracks_neg{nullptr};
   TEfficiency *eta_pt_vtx_tracks_pos{nullptr};
 };
+
+
 
 boost::program_options::options_description PidMatching::GetBoostOptions() {
   namespace po = boost::program_options;
@@ -70,6 +84,7 @@ void PidMatching::Init(std::map<std::string, void *> &map) {
   matching_ptr_ = static_cast<Matching *>(map["VtxTracks2SimTracks"]);
   vtx_tracks_ptr = static_cast<AnalysisTree::TrackDetector *>(map["VtxTracks"]);
   sim_track_ptr = static_cast<AnalysisTree::TrackDetector *>(map["SimTracks"]);
+  centrality_ptr = static_cast<AnalysisTree::EventHeader *>(map["Centrality"]);
 
   auto simTracksConfig = config_->GetBranchConfig("SimTracks");
   simTracksConfig.Print();
@@ -91,6 +106,7 @@ void PidMatching::Init(std::map<std::string, void *> &map) {
   i_charge = VarId("VtxTracks/q");
 
   i_sim_mother_id = VarId("SimTracks/mother_id");
+  i_centrality_id = VarId("Centrality/Centrality_Epsd");
 
   /* output config */
   NewBranch("MatchedVtxTracks", AnalysisTree::DetType::kParticle);
@@ -120,6 +136,8 @@ void PidMatching::Exec() {
 
   TLorentzVector sim_momentum;
   TLorentzVector vtx_momentum;
+
+  auto centrality = centrality_ptr->GetField<float>(i_centrality_id);
 
   for (auto &[firstId, secondId] : matching_ptr_->GetMatches()) {
     auto vtx_track = vtx_tracks_ptr->GetChannel(firstId);
@@ -170,6 +188,10 @@ void PidMatching::Exec() {
       if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
         efficiencies[pdg]->matched_tracks_y_pt->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                      vtx_momentum.Pt());
+        efficiencies[pdg]->matched_tracks_centr_y_pt->Fill(
+            centrality,
+            vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+            vtx_momentum.Pt());
       }
     }
 
@@ -188,13 +210,21 @@ void PidMatching::Exec() {
       sim_momentum = channel.Get4Momentum(pdg);
       efficiencies[pdg]->sim_tracks_y_pt->Fill(sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                sim_momentum.Pt());
+      efficiencies[pdg]->sim_tracks_centr_y_pt->Fill(
+          centrality,
+          sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+          sim_momentum.Pt());
 
       /* lookup for match */
       auto has_matched_vtx_track = match_inv.find(i_t) != match_inv.end()
           && CheckVtxTrack(vtx_tracks_ptr->GetChannel(match_inv.at(i_t)));
-      efficiencies[pdg]->efficiency_y_pt_filled->Fill(has_matched_vtx_track,
-                                                      sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                                      sim_momentum.Pt());
+      efficiencies[pdg]->matched_sim_sim_y_pt->Fill(has_matched_vtx_track,
+                                                    sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+                                                    sim_momentum.Pt());
+      efficiencies[pdg]->matched_sim_sim_centr_y_pt->Fill(has_matched_vtx_track,
+                                                          centrality,
+                                                          sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+                                                          sim_momentum.Pt());
     }
   } // sim tracks
 
@@ -226,8 +256,14 @@ void PidMatching::Finish() {
   auto cwd = gDirectory;
   for (auto &&[pdg, efficiency] : efficiencies) {
     efficiency->output_dir->cd();
+
     efficiency->matched_tracks_y_pt->Write();
     efficiency->sim_tracks_y_pt->Write();
+
+    efficiency->matched_tracks_centr_y_pt->Write();
+    efficiency->sim_tracks_centr_y_pt->Write();
+
+    efficiency->matched_sim_sim_centr_y_pt->Write();
 
     /* clean-up bins */
     for (int i_cell = 0; i_cell < efficiency->matched_tracks_y_pt->GetNcells(); i_cell++) {
@@ -237,22 +273,29 @@ void PidMatching::Finish() {
       }
     }
 
-    efficiency->efficiency_y_pt_from_hists = new TEfficiency(*efficiency->matched_tracks_y_pt,
-                                                             *efficiency->sim_tracks_y_pt);
-    efficiency->efficiency_y_pt_from_hists->SetTitle("N (VtxTracks) / N (SimTracks);#it{y}_{CM};p_{T} (GeV/c)");
-    efficiency->efficiency_y_pt_from_hists->Write("efficiency_y_pt_from_hists");
-    efficiency->efficiency_y_pt_filled->Write("efficiency_y_pt_filled");
+    /* clean-up 3d bins */
+    for (int i_cell = 0; i_cell < efficiency->matched_tracks_centr_y_pt->GetNcells(); i_cell++) {
+      if (efficiency->matched_tracks_centr_y_pt->GetBinContent(i_cell) > efficiency->sim_tracks_centr_y_pt->GetBinContent(i_cell)) {
+        efficiency->matched_tracks_centr_y_pt->SetBinContent(i_cell, 0);
+        efficiency->sim_tracks_centr_y_pt->SetBinContent(i_cell, 0);
+      }
+    }
+
+    efficiency->vtx_sim_y_pt = new TEfficiency(*efficiency->matched_tracks_y_pt,
+                                               *efficiency->sim_tracks_y_pt);
+    efficiency->vtx_sim_y_pt->SetName("vtx_sim_y_pt");
+    efficiency->vtx_sim_y_pt->SetTitle("N (VtxTracks) / N (SimTracks);#it{y}_{CM};p_{T} (GeV/c)");
+    efficiency->vtx_sim_y_pt->Write("vtx_sim_y_pt");
+    efficiency->matched_sim_sim_y_pt->Write();
+
+    efficiency->vtx_sim_centr_y_pt = new TEfficiency(*efficiency->matched_tracks_centr_y_pt,
+                                                     *efficiency->sim_tracks_centr_y_pt);
+    efficiency->vtx_sim_centr_y_pt->SetName("vtx_sim_centr_y_pt");
+    efficiency->vtx_sim_centr_y_pt->SetTitle("N (VtxTracks) / N (SimTracks);Centrality;#it{y}_{CM};p_{T} (GeV/c)");
+    efficiency->vtx_sim_centr_y_pt->Write("vtx_sim_centr_y_pt");
 
     if (save_canvases) {
-      auto c = new TCanvas;
-      c->Divide(2, 1);
-      c->cd(1);
-      efficiency->efficiency_y_pt_from_hists->SetMarkerSize(0.5);
-      efficiency->efficiency_y_pt_from_hists->DrawClone("colz,text");
-      c->cd(2);
-      efficiency->efficiency_y_pt_filled->SetMarkerSize(0.5);
-      efficiency->efficiency_y_pt_filled->DrawClone("colz,text");
-      c->Write("efficiency_methods");
+      MakeFancy(efficiency->output_dir);
     }
 
   }
@@ -263,13 +306,7 @@ void PidMatching::Finish() {
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->Write();
     charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->Write();
     if (save_canvases) {
-      auto c = new TCanvas;
-      charged_hadrons_efficiency->eta_pt_vtx_tracks->DrawClone("colz,text");
-      c->Write("c_efficiency_all_hadrons");
-      charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->DrawClone("colz,text");
-      c->Write("c_efficiency_neg");
-      charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->DrawClone("colz,text");
-      c->Write("c_efficiency_pos");
+      MakeFancy(charged_hadrons_efficiency->output_dir);
     }
   }
   cwd->cd();
@@ -302,10 +339,23 @@ void PidMatching::InitEfficiencies() {
                                               15, 0., 3.);
     qa_struct->sim_tracks_y_pt = (TH2 *) qa_struct->matched_tracks_y_pt->Clone("sim_tracks_y_pt");
 
-    qa_struct->efficiency_y_pt_filled = new TEfficiency("efficiency_filled",
-                                                        "N (Matched SimTracks) / N(SimTracks);#it{y}_{CM};p_{T} (GeV/c)",
-                                                        30, -2., 4.,
-                                                        15, 0., 3.);
+    qa_struct->matched_tracks_centr_y_pt = new TH3D("matched_tracks_centr_y_pt",
+                                                    "Centrality (%);#it{y}_{CM};p_{T} (GeV/c)",
+                                                    20, 0., 100.,
+                                                    30,-2., 4.,
+                                                    15, 0., 3.);
+    qa_struct->sim_tracks_centr_y_pt = (TH3*) qa_struct->matched_tracks_centr_y_pt->Clone("sim_tracks_centr_y_pt");
+
+    qa_struct->matched_sim_sim_y_pt = new TEfficiency("matched_sim_sim_y_pt",
+                                                      "N (Matched SimTracks) / N(SimTracks);#it{y}_{CM};p_{T} (GeV/c)",
+                                                      30, -2., 4.,
+                                                      15, 0., 3.);
+    qa_struct->matched_sim_sim_centr_y_pt = new TEfficiency("matched_sim_sim_centr_y_pt",
+                                                            "N (Matched SimTracks) / N(SimTracks);Centrality (%);#it{y}_{CM};p_{T} (GeV/c)",
+                                                            20,0.,100.,
+                                                            30,-2.,4.,
+                                                            15,0.,3.);
+
 
   }
 
@@ -314,8 +364,12 @@ void PidMatching::InitEfficiencies() {
     charged_hadrons_efficiency->output_dir = qa_file_->mkdir("efficiency_charged_hadrons", "", true);
     charged_hadrons_efficiency->eta_pt_vtx_tracks = new TEfficiency("efficiency_all_tracks",
                                                                     "N (VtxTracks) / N (Matched VtxTracks);#eta;p_{T} (GeV/c)",
-                                                                    16,0.,8.,
-                                                                    15,0.,3.);
+                                                                    16,
+                                                                    0.,
+                                                                    8.,
+                                                                    15,
+                                                                    0.,
+                                                                    3.);
     charged_hadrons_efficiency->eta_pt_vtx_tracks->SetMarkerSize(0.5);
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg =
         (TEfficiency *) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_neg");
