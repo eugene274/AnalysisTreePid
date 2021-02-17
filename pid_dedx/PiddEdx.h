@@ -33,6 +33,9 @@ public:
   }
 
 private:
+  void InitEfficiencyDefinitions();
+
+  /* SETUP */
   std::string getter_file_;
   std::string getter_name_;
 
@@ -40,6 +43,13 @@ private:
   std::string dedx_field_name_;
 
   std::string output_branch_name_;
+
+  std::vector<std::string> efficiency_definitions_;
+  std::string efficiency_matrix_name_{"vtx_sim_centr_y_pt"};
+
+  /* efficiency */
+  struct Efficiency;
+  std::map<int, std::unique_ptr<Efficiency>> efficiencies_;
 
   std::shared_ptr<Pid::BaseGetter> getter_;
 

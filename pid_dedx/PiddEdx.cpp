@@ -3,14 +3,24 @@
 //
 
 #include "PiddEdx.h"
-#include "TLorentzVector.h"
+
+#include <TKey.h>
+#include <TEfficiency.h>
+#include <TLorentzVector.h>
 
 #include <AnalysisTree/DataHeader.hpp>
+
 #include <pid_new/core/PdgHelper.h>
 
 #include <regex>
+#include <boost/lexical_cast.hpp>
 
 TASK_IMPL(PiddEdx)
+
+struct PiddEdx::Efficiency {
+
+  std::unique_ptr<TEfficiency> eff{nullptr};
+};
 
 boost::program_options::options_description PiddEdx::GetBoostOptions() {
   using namespace boost::program_options;
@@ -22,8 +32,8 @@ boost::program_options::options_description PiddEdx::GetBoostOptions() {
       ("tracks-branch", value(&tracks_branch_)->default_value("VtxTracks"), "Name of branch with tracks")
       ("dedx-field", value(&dedx_field_name_)->default_value("dedx_total"), "Name of the field with dEdx")
       ("output-branch", value(&output_branch_name_)->default_value("RecParticles"),
-          "Name of the output branch with identified particles")
-      ;
+       "Name of the output branch with identified particles")
+      ("efficiency-definitions", value(&efficiency_definitions_)->multitoken(), "Efficiency definitions");;
   return desc;
 }
 
@@ -32,6 +42,7 @@ void PiddEdx::ProcessBoostVM(const boost::program_options::variables_map &vm) {
 }
 
 void PiddEdx::PreInit() {
+  InitEfficiencyDefinitions();
   /* Load getter */
   TFile f(getter_file_.c_str(), "read");
   if (!f.IsOpen()) {
@@ -51,17 +62,16 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   tracks_ = static_cast<AnalysisTree::TrackDetector *>(Map.at(tracks_branch_));
 
   /* Input */
-  auto tracks_config = config_->GetBranchConfig(tracks_->GetId());
-  dedx_field_id_ = VarId(tracks_branch_,dedx_field_name_);
-  charge_field_id_ = VarId(tracks_branch_,"q");
-  i_dca_x_field_id_ = VarId(tracks_branch_,"dcax");
-  i_dca_y_field_id_ = VarId(tracks_branch_,"dcay");
-  i_nhits_vtpc1_ = VarId(tracks_branch_,"nhits_vtpc1");
-  i_nhits_vtpc2_ = VarId(tracks_branch_,"nhits_vtpc2");
-  i_nhits_mtpc_ = VarId(tracks_branch_,"nhits_mtpc");
-  i_nhits_pot_vtpc1_ = VarId(tracks_branch_,"nhits_pot_vtpc1");
-  i_nhits_pot_vtpc2_ = VarId(tracks_branch_,"nhits_pot_vtpc2");
-  i_nhits_pot_mtpc_ = VarId(tracks_branch_,"nhits_pot_mtpc");
+  dedx_field_id_ = VarId(tracks_branch_, dedx_field_name_);
+  charge_field_id_ = VarId(tracks_branch_, "q");
+  i_dca_x_field_id_ = VarId(tracks_branch_, "dcax");
+  i_dca_y_field_id_ = VarId(tracks_branch_, "dcay");
+  i_nhits_vtpc1_ = VarId(tracks_branch_, "nhits_vtpc1");
+  i_nhits_vtpc2_ = VarId(tracks_branch_, "nhits_vtpc2");
+  i_nhits_mtpc_ = VarId(tracks_branch_, "nhits_mtpc");
+  i_nhits_pot_vtpc1_ = VarId(tracks_branch_, "nhits_pot_vtpc1");
+  i_nhits_pot_vtpc2_ = VarId(tracks_branch_, "nhits_pot_vtpc2");
+  i_nhits_pot_mtpc_ = VarId(tracks_branch_, "nhits_pot_mtpc");
 
   /* Output */
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
@@ -130,7 +140,7 @@ void PiddEdx::Exec() {
             track.GetField<int>(i_nhits_mtpc_);
         int nhits_vtpc =
             track.GetField<int>(i_nhits_vtpc1_) +
-            track.GetField<int>(i_nhits_vtpc2_);
+                track.GetField<int>(i_nhits_vtpc2_);
 
         int nhits_pot_total = track.GetField<int>(i_nhits_pot_vtpc1_) +
             track.GetField<int>(i_nhits_pot_vtpc2_) +
@@ -138,7 +148,7 @@ void PiddEdx::Exec() {
         particle->SetField(nhits_total, o_nhits_total_);
         particle->SetField<int>(nhits_vtpc, o_nhits_vtpc_);
         particle->SetField(nhits_pot_total, o_nhits_pot_total_);
-        particle->SetField(float(nhits_total)/float(nhits_pot_total), o_nhits_ratio_);
+        particle->SetField(float(nhits_total) / float(nhits_pot_total), o_nhits_ratio_);
       }
 
     }
@@ -147,4 +157,55 @@ void PiddEdx::Exec() {
 
   std::cout << "Identified " << rec_particles_->GetNumberOfChannels() << " particles of " <<
             tracks_->GetNumberOfChannels() << " tracks" << std::endl;
+}
+
+void PiddEdx::InitEfficiencyDefinitions() {
+  const std::regex tgt_re_expr("^.*tgt:(\\w+).*$");
+  const std::regex src_re_expr("^.*src:([^\\s]+).*$");
+  const std::regex eff_dir_re_expr("^efficiency_([-\\d]+)$");
+
+  for (auto &eff_def : efficiency_definitions_) {
+    std::smatch tgt_match;
+    bool tgt_found = std::regex_search(eff_def, tgt_match, tgt_re_expr);
+    if (!tgt_found)
+      throw std::runtime_error("No 'tgt' entry in the efficiency definition");
+    std::string tgt = tgt_match.str(1);
+
+    std::smatch src_match;
+    bool src_found = std::regex_search(eff_def, src_match, src_re_expr);
+    if (!src_found)
+      throw std::runtime_error("No 'src' entry in the efficiency definition");
+    std::string src_filename = src_match.str(1);
+
+    /* attempting to reach efficiency src */
+    TFile f_efficiency(src_filename.c_str(), "READ");
+    if (f_efficiency.IsZombie())
+      throw std::runtime_error("Efficiency ROOT file seems to be empty");
+
+    /* Lookup available PID-s */
+    for (auto o : *f_efficiency.GetListOfKeys()) {
+      std::smatch eff_pid_match;
+      std::string obj_name{o->GetName()};
+      if (std::regex_search(obj_name, eff_pid_match, eff_dir_re_expr)) {
+        auto pid_str = eff_pid_match.str(1);
+        auto pid = boost::lexical_cast<int>(pid_str);
+
+        auto key = (TKey *) o;
+        if (!TClass::GetClass(key->GetClassName())->InheritsFrom(TDirectory::Class())) {
+          throw std::runtime_error("Expected directory for the efficiency");
+        }
+        auto eff_dir = (TDirectory *) key->ReadObj();
+
+        auto efficiency_matrix = eff_dir->Get<TEfficiency>(efficiency_matrix_name_.c_str());
+        if (!efficiency_matrix)
+          throw std::runtime_error("Efficiency matrix is not found for " + pid_str);
+
+        efficiency_matrix->SetDirectory(nullptr);
+        efficiency_matrix->Print();
+
+      }
+    }
+
+  }
+
 }
