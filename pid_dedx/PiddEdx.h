@@ -44,12 +44,17 @@ private:
 
   std::string output_branch_name_;
 
+  /* efficiency */
   std::vector<std::string> efficiency_definitions_;
   std::string efficiency_matrix_name_{"vtx_sim_centr_y_pt"};
+  std::string efficiency_centrality_vname_{"Centrality/Centrality_Epsd"};
 
-  /* efficiency */
   struct Efficiency;
   std::map<int, std::unique_ptr<Efficiency>> efficiencies_;
+
+  VariableIndex i_centrality_;
+
+
 
   std::shared_ptr<Pid::BaseGetter> getter_;
 

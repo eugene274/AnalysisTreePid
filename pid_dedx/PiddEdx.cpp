@@ -19,7 +19,11 @@ TASK_IMPL(PiddEdx)
 
 struct PiddEdx::Efficiency {
 
-  std::unique_ptr<TEfficiency> eff{nullptr};
+  std::unique_ptr<const TEfficiency> eff{nullptr};
+
+  float Eval(float centrality, float y_cm, float pt) const {
+    return eff->GetEfficiency(eff->FindFixBin(centrality, y_cm, pt));
+  }
 };
 
 boost::program_options::options_description PiddEdx::GetBoostOptions() {
@@ -73,6 +77,8 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   i_nhits_pot_vtpc2_ = VarId(tracks_branch_, "nhits_pot_vtpc2");
   i_nhits_pot_mtpc_ = VarId(tracks_branch_, "nhits_pot_mtpc");
 
+
+
   /* Output */
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
   rec_particle_config_.AddField<float>("y_cm");
@@ -93,6 +99,11 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   o_nhits_vtpc_ = rec_particle_config_.GetFieldId("nhits_vtpc");
   o_nhits_pot_total_ = rec_particle_config_.GetFieldId("nhits_pot_total");
   o_nhits_ratio_ = rec_particle_config_.GetFieldId("nhits_ratio");
+
+  if (!efficiencies_.empty()) {
+    /* For the efficiency we require also centrality axis from the input */
+    i_centrality_ = VarId(efficiency_centrality_vname_);
+  }
 
   out_config_->AddBranchConfig(rec_particle_config_);
 
@@ -200,9 +211,13 @@ void PiddEdx::InitEfficiencyDefinitions() {
         if (!efficiency_matrix)
           throw std::runtime_error("Efficiency matrix is not found for " + pid_str);
 
+        /* object is not owned by parent directory */
         efficiency_matrix->SetDirectory(nullptr);
-        efficiency_matrix->Print();
 
+        /* Success, populating structures */
+        auto efficiency_struct = std::make_unique<Efficiency>();
+        efficiency_struct->eff = std::unique_ptr<TEfficiency>(efficiency_matrix);
+        efficiencies_.emplace(pid, std::move(efficiency_struct));
       }
     }
 

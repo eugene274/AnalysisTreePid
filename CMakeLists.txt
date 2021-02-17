@@ -26,3 +26,4 @@ FetchContent_MakeAvailable(Pid)
 
 add_subdirectory(pid_dedx)
 add_subdirectory(pid_matching)
+add_subdirectory(task_efficiency)
