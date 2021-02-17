@@ -81,6 +81,8 @@ ProjectEfficiency(TEfficiency *eff) {
           Form("%s Bin #%d [%f, %f]", eff->GetTitle(), ix, x_axis->GetBinLowEdge(ix), x_axis->GetBinUpEdge(ix)),
           y_axis->GetNbins(), y_axis->GetXmin(), y_axis->GetXmax(),
           z_axis->GetNbins(), z_axis->GetXmin(), z_axis->GetXmax());
+      h2->GetXaxis()->SetTitle(y_axis->GetTitle());
+      h2->GetYaxis()->SetTitle(z_axis->GetTitle());
       h2->SetDirectory(nullptr);
 
       for (int iy = 1; iy < y_axis->GetNbins(); ++iy) {
@@ -88,8 +90,10 @@ ProjectEfficiency(TEfficiency *eff) {
           auto yc = y_axis->GetBinCenter(iy);
           auto zc = z_axis->GetBinCenter(iz);
           bool is_any_passed = passed_histo->GetBinContent(ix, iy, iz) > 0;
-          if (is_any_passed)
+          if (is_any_passed) {
             h2->Fill(yc, zc, eff->GetEfficiency(eff->GetGlobalBin(ix, iy, iz)));
+          }
+
         }
       }
 
