@@ -8,6 +8,8 @@
 #include <AnalysisTree/DataHeader.hpp>
 #include <pid_new/core/PdgHelper.h>
 
+#include <regex>
+
 TASK_IMPL(PiddEdx)
 
 boost::program_options::options_description PiddEdx::GetBoostOptions() {
@@ -18,8 +20,15 @@ boost::program_options::options_description PiddEdx::GetBoostOptions() {
       ("getter-file", value(&getter_file_)->required(), "Path to ROOT file with getter")
       ("getter-name", value(&getter_name_)->default_value("pid_getter"), "Name of Pid getter")
       ("tracks-branch", value(&tracks_branch_)->default_value("VtxTracks"), "Name of branch with tracks")
-      ("dedx-field", value(&dedx_field_name_)->default_value("dedx_total"), "Name of the field with dEdx");
+      ("dedx-field", value(&dedx_field_name_)->default_value("dedx_total"), "Name of the field with dEdx")
+      ("output-branch", value(&output_branch_name_)->default_value("RecParticles"),
+          "Name of the output branch with identified particles")
+      ;
   return desc;
+}
+
+void PiddEdx::ProcessBoostVM(const boost::program_options::variables_map &vm) {
+  UserTask::ProcessBoostVM(vm);
 }
 
 void PiddEdx::PreInit() {
@@ -35,7 +44,7 @@ void PiddEdx::PreInit() {
   }
 
   SetInputBranchNames({tracks_branch_});
-  SetOutputBranchName("RecParticles");
+  SetOutputBranchName(output_branch_name_);
 }
 
 void PiddEdx::Init(std::map<std::string, void *> &Map) {
@@ -43,16 +52,16 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
 
   /* Input */
   auto tracks_config = config_->GetBranchConfig(tracks_->GetId());
-  dedx_field_id_ = tracks_config.GetFieldId(dedx_field_name_);
-  charge_field_id_ = tracks_config.GetFieldId("q");
-  i_dca_x_field_id_ = tracks_config.GetFieldId("dcax");
-  i_dca_y_field_id_ = tracks_config.GetFieldId("dcay");
-  i_nhits_vtpc1_ = tracks_config.GetFieldId("nhits_vtpc1");
-  i_nhits_vtpc2_ = tracks_config.GetFieldId("nhits_vtpc2");
-  i_nhits_mtpc_ = tracks_config.GetFieldId("nhits_mtpc");
-  i_nhits_pot_vtpc1_ = tracks_config.GetFieldId("nhits_pot_vtpc1");
-  i_nhits_pot_vtpc2_ = tracks_config.GetFieldId("nhits_pot_vtpc2");
-  i_nhits_pot_mtpc_ = tracks_config.GetFieldId("nhits_pot_mtpc");
+  dedx_field_id_ = VarId(tracks_branch_,dedx_field_name_);
+  charge_field_id_ = VarId(tracks_branch_,"q");
+  i_dca_x_field_id_ = VarId(tracks_branch_,"dcax");
+  i_dca_y_field_id_ = VarId(tracks_branch_,"dcay");
+  i_nhits_vtpc1_ = VarId(tracks_branch_,"nhits_vtpc1");
+  i_nhits_vtpc2_ = VarId(tracks_branch_,"nhits_vtpc2");
+  i_nhits_mtpc_ = VarId(tracks_branch_,"nhits_mtpc");
+  i_nhits_pot_vtpc1_ = VarId(tracks_branch_,"nhits_pot_vtpc1");
+  i_nhits_pot_vtpc2_ = VarId(tracks_branch_,"nhits_pot_vtpc2");
+  i_nhits_pot_mtpc_ = VarId(tracks_branch_,"nhits_pot_mtpc");
 
   /* Output */
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);

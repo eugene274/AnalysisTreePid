@@ -26,6 +26,7 @@ public:
 
   }
   boost::program_options::options_description GetBoostOptions() override;
+  void ProcessBoostVM(const boost::program_options::variables_map &vm) override;
   void PreInit() override;
   void PostFinish() override {
     UserTask::PostFinish();
@@ -37,6 +38,8 @@ private:
 
   std::string tracks_branch_;
   std::string dedx_field_name_;
+
+  std::string output_branch_name_;
 
   std::shared_ptr<Pid::BaseGetter> getter_;
 
