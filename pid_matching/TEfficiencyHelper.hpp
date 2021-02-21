@@ -37,6 +37,10 @@ ProjectEfficiency(TEfficiency *eff) {
         x_axis->GetNbins(), x_axis->GetXmin(), x_axis->GetXmax(),
         y_axis->GetNbins(), y_axis->GetXmin(), y_axis->GetXmax());
     h2->SetDirectory(nullptr);
+    h2->GetXaxis()->SetTitle(x_axis->GetTitle());
+    h2->GetYaxis()->SetTitle(y_axis->GetTitle());
+    h2->SetMinimum(0.);
+    h2->SetMaximum(1.);
 
     for (int ix = 1; ix < x_axis->GetNbins(); ++ix) {
       for (int iy = 1; iy < y_axis->GetNbins(); ++iy) {
@@ -84,6 +88,8 @@ ProjectEfficiency(TEfficiency *eff) {
       h2->GetXaxis()->SetTitle(y_axis->GetTitle());
       h2->GetYaxis()->SetTitle(z_axis->GetTitle());
       h2->SetDirectory(nullptr);
+      h2->SetMinimum(0.);
+      h2->SetMaximum(1.);
 
       for (int iy = 1; iy < y_axis->GetNbins(); ++iy) {
         for (int iz = 1; iz < z_axis->GetNbins(); ++iz) {

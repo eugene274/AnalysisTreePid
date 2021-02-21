@@ -23,9 +23,9 @@ class PidMatching : public UserFillTask {
   void PreInit() override;
   void PostFinish() override;
 
-  void Init(std::map<std::string, void *> &map) override;
-  void Exec() override;
-  void Finish() override;
+  void UserInit(std::map<std::string, void *> &map) override;
+  void UserExec() override;
+  void UserFinish() override;
 
  private:
   struct PidEfficiencyQAStruct;
@@ -34,13 +34,8 @@ class PidMatching : public UserFillTask {
   void InitEfficiencies();
 
   AnalysisTree::Matching *matching_ptr_{nullptr};
-  AnalysisTree::TrackDetector *vtx_tracks_ptr{nullptr};
-  AnalysisTree::TrackDetector *sim_track_ptr{nullptr};
-  AnalysisTree::EventHeader *centrality_ptr{nullptr};
-
-  AnalysisTree::BranchConfig matched_particles_config_;
-  AnalysisTree::Particles  *matched_particles_{nullptr};
-
+  ATI2::Branch *vtxt_branch{nullptr};
+  ATI2::Branch *simt_branch{nullptr};
 
   std::map<int, PidEfficiencyQAStruct *> efficiencies;
   ChargedHadronsEfficiencyStruct *charged_hadrons_efficiency{nullptr};
@@ -53,41 +48,43 @@ class PidMatching : public UserFillTask {
   TFile *qa_file_{nullptr};
 
  protected:
-  virtual bool CheckSimTrack(const AnalysisTree::Track &track) const = 0;
-  virtual bool CheckVtxTrack(const AnalysisTree::Track &track) const = 0;
+  virtual bool CheckSimTrack(const ATI2::BranchChannel &sim_track) const = 0;
+  virtual bool CheckVtxTrack(const ATI2::BranchChannel &vtx_track) const = 0;
 
-  short y_cm_field_id_;
-  short y_field_id_;
-  short o_dca_x_field_id_;
-  short o_dca_y_field_id_;
-  short o_nhits_total_;
-  short o_nhits_vtpc_;
-  short o_nhits_ratio_;
-  short o_nhits_pot_total_;
-  short sim_track_pdg_id_;
-  short i_dca_x_field_id_;
-  short i_dca_y_field_id_;
-  short i_nhits_vtpc1_;
-  short i_nhits_pot_vtpc1_;
-  short i_nhits_mtpc_;
-  short i_nhits_pot_vtpc2_;
-  short i_nhits_pot_mtpc_;
-  short i_nhits_vtpc2_;
-  short o_sim_y_cm_;
-  short o_sim_pt_;
-  short o_sim_phi_;
-  int i_charge;
+  ATI2::Variable evt_centrality;
 
-  short i_sim_mother_id;
-  short i_centrality_id;
+  ATI2::Variable vtxt_dca_x_;
+  ATI2::Variable vtxt_dca_y_;
+  ATI2::Variable vtxt_nhits_vtpc1_;
+  ATI2::Variable vtxt_nhits_pot_vtpc1_;
+  ATI2::Variable vtxt_nhits_vtpc2_;
+  ATI2::Variable vtxt_nhits_pot_vtpc2_;
+  ATI2::Variable vtxt_nhits_mtpc_;
+  ATI2::Variable vtxt_charge;
+  ATI2::Variable vtxt_nhits_pot_mtpc_;
+
+  ATI2::Branch *mt_branch{nullptr};
+  ATI2::Variable mt_y_cm_;
+  ATI2::Variable mt_nhits_total_;
+  ATI2::Variable mt_nhits_vtpc_;
+  ATI2::Variable mt_nhits_ratio_;
+  ATI2::Variable mt_nhits_pot_total_;
+  ATI2::Variable mt_pid;
+  ATI2::Variable mt_mass;
+  ATI2::Variable mt_sim_y_cm_;
+  ATI2::Variable mt_sim_pt_;
+  ATI2::Variable mt_sim_phi_;
+
+  ATI2::Variable sim_mother_id_;
+  ATI2::Variable sim_pdg_;
 };
 
 class PidMatching_NoCuts : public PidMatching {
  protected:
-  bool CheckSimTrack(const AnalysisTree::Track &track) const override {
-    return track.GetField<int>(i_sim_mother_id) == -1;
+  bool CheckSimTrack(const ATI2::BranchChannel &sim_track) const override {
+    return sim_track[sim_mother_id_].GetInt() == -1;
   }
-  bool CheckVtxTrack(const AnalysisTree::Track &track) const override {
+  bool CheckVtxTrack(const ATI2::BranchChannel &vtx_track) const override {
     return true;
   }
  TASK_DEF(PidMatching_NoCuts, 0);
@@ -95,26 +92,25 @@ class PidMatching_NoCuts : public PidMatching {
 
 class PidMatching_StandardCuts : public PidMatching {
  protected:
-  bool CheckSimTrack(const AnalysisTree::Track &track) const override {
-    return track.GetField<int>(i_sim_mother_id) == -1;
+  bool CheckSimTrack(const ATI2::BranchChannel &sim_track) const override {
+    return sim_track[sim_mother_id_].GetInt() == -1;
   }
-  bool CheckVtxTrack(const AnalysisTree::Track &track) const override {
+  bool CheckVtxTrack(const ATI2::BranchChannel &vtx_track) const override {
     int nhits_total =
-        track.GetField<int>(i_nhits_vtpc1_) +
-        track.GetField<int>(i_nhits_vtpc2_) +
-        track.GetField<int>(i_nhits_mtpc_);
+        vtx_track[vtxt_nhits_vtpc1_].GetInt() +
+        vtx_track[vtxt_nhits_vtpc2_].GetInt() +
+        vtx_track[vtxt_nhits_mtpc_].GetInt();
     int nhits_vtpc =
-        track.GetField<int>(i_nhits_vtpc1_) +
-        track.GetField<int>(i_nhits_vtpc2_);
+        vtx_track[vtxt_nhits_vtpc1_].GetInt() +
+        vtx_track[vtxt_nhits_vtpc2_].GetInt();
     int nhits_pot_total =
-        track.GetField<int>(i_nhits_pot_vtpc1_) +
-        track.GetField<int>(i_nhits_pot_vtpc2_) +
-        track.GetField<int>(i_nhits_pot_mtpc_);
-
+        vtx_track[vtxt_nhits_pot_vtpc1_].GetInt() +
+        vtx_track[vtxt_nhits_pot_vtpc2_].GetInt() +
+        vtx_track[vtxt_nhits_pot_mtpc_].GetInt();
     float ratio_nhits_nhits_pot = float(nhits_total) / float(nhits_pot_total);
 
-    auto dca_x = track.GetField<float>(i_dca_x_field_id_);
-    auto dca_y = track.GetField<float>(i_dca_y_field_id_);
+    auto dca_x = vtx_track[vtxt_dca_x_];
+    auto dca_y = vtx_track[vtxt_dca_y_];
 
 
     return
