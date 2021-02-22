@@ -269,7 +269,7 @@ void PidMatching::UserFinish() {
     efficiency->vtx_sim_centr_y_pt->Write("vtx_sim_centr_y_pt");
 
     if (save_canvases) {
-      MakeFancy(efficiency->output_dir);
+      ProcessEfficiencyDir(efficiency->output_dir);
     }
 
   }
@@ -280,7 +280,7 @@ void PidMatching::UserFinish() {
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->Write();
     charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->Write();
     if (save_canvases) {
-      MakeFancy(charged_hadrons_efficiency->output_dir);
+      ProcessEfficiencyDir(charged_hadrons_efficiency->output_dir);
     }
   }
   cwd->cd();
