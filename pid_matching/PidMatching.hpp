@@ -51,8 +51,6 @@ class PidMatching : public UserFillTask {
   virtual bool CheckSimTrack(const ATI2::BranchChannel &sim_track) const = 0;
   virtual bool CheckVtxTrack(const ATI2::BranchChannel &vtx_track) const = 0;
 
-  ATI2::Variable evt_centrality;
-
   ATI2::Variable vtxt_dca_x_;
   ATI2::Variable vtxt_dca_y_;
   ATI2::Variable vtxt_nhits_vtpc1_;

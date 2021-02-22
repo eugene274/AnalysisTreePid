@@ -79,7 +79,7 @@ ProjectEfficiency(TEfficiency *eff) {
     auto y_axis = total_histo->GetYaxis();
     auto z_axis = total_histo->GetZaxis();
 
-    for (int ix = 1; ix < x_axis->GetNbins(); ++ix) {
+    for (int ix = 1; ix < x_axis->GetNbins()+1; ++ix) {
       auto h2 = new TProfile2D(
           Form("%s_%d", eff->GetName(), ix),
           Form("%s Bin #%d [%f, %f]", eff->GetTitle(), ix, x_axis->GetBinLowEdge(ix), x_axis->GetBinUpEdge(ix)),
