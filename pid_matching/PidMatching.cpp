@@ -314,8 +314,8 @@ void PidMatching::InitEfficiencies() {
   };
 
 
-  Int_t mult_axis_size = 7;
-  const auto mult_axis = new double[8]{0., 6., 19., 35., 60., 100., 145., 200.};
+  Int_t mult_axis_size = 6;
+  const auto mult_axis = linspace(6, 0., 300.);
   Int_t y_axis_size = 30;
   const auto y_axis = linspace(30, -2., 4.);
   Int_t eta_axis_size = 30;
