@@ -21,7 +21,6 @@ class EvalEfficiency : public UserFillTask {
  private:
   void LoadEfficiencyFromSource();
 
-
   std::string target_branch_name_;
   std::string efficiency_src_file_name_;
   std::string efficiency_field_name_;
@@ -32,14 +31,14 @@ class EvalEfficiency : public UserFillTask {
   std::string var_y_cm_name_;
   std::string var_pt_name_;
 
-  ATI2::Variable centrality_;
-  ATI2::Variable pdg_;
-  ATI2::Variable ycm_;
-  ATI2::Variable pt;
-  ATI2::Branch *rec_particles;
+  ATI2::Branch *rec_particles_branch;
 
-  short o_efficiency_;
+  ATI2::Branch *processed_branch;
+  ATI2::Branch *vtx_tracks_branch;
 
+  ATI2::Variable pid_v;
+  ATI2::Variable y_cm_v;
+  ATI2::Variable pt_v;
  TASK_DEF(EvalEfficiency, 0)
 };
 
