@@ -14,12 +14,31 @@ class EvalEfficiency : public UserFillTask {
   void PreInit() override;
   void PostFinish() override;
 
-  void Init(std::map<std::string, void *> &map) override;
-  void Exec() override;
-  void Finish() override;
+  void UserInit(std::map<std::string, void *> &map) override;
+  void UserExec() override;
+  void UserFinish() override;
 
  private:
+  void LoadEfficiencyFromSource();
 
+
+  std::string target_branch_name_;
+  std::string efficiency_src_file_name_;
+  std::string efficiency_field_name_;
+  std::string new_branch_name_;
+
+  std::string var_centrality_name_;
+  std::string var_pid_name_;
+  std::string var_y_cm_name_;
+  std::string var_pt_name_;
+
+  ATI2::Variable centrality_;
+  ATI2::Variable pdg_;
+  ATI2::Variable ycm_;
+  ATI2::Variable pt;
+  ATI2::Branch *rec_particles;
+
+  short o_efficiency_;
 
  TASK_DEF(EvalEfficiency, 0)
 };

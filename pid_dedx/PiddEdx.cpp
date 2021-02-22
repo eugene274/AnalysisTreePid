@@ -62,21 +62,21 @@ void PiddEdx::PreInit() {
   SetOutputBranchName(output_branch_name_);
 }
 
-void PiddEdx::Init(std::map<std::string, void *> &Map) {
+void PiddEdx::UserInit(std::map<std::string, void *> &Map) {
   tracks_ = static_cast<AnalysisTree::TrackDetector *>(Map.at(tracks_branch_));
 
   /* Input */
-  dedx_field_id_ = VarId(tracks_branch_, dedx_field_name_);
-  charge_field_id_ = VarId(tracks_branch_, "q");
-  i_dca_x_field_id_ = VarId(tracks_branch_, "dcax");
-  i_dca_y_field_id_ = VarId(tracks_branch_, "dcay");
-  i_nhits_vtpc1_ = VarId(tracks_branch_, "nhits_vtpc1");
-  i_nhits_vtpc2_ = VarId(tracks_branch_, "nhits_vtpc2");
-  i_nhits_mtpc_ = VarId(tracks_branch_, "nhits_mtpc");
-  i_nhits_pot_vtpc1_ = VarId(tracks_branch_, "nhits_pot_vtpc1");
-  i_nhits_pot_vtpc2_ = VarId(tracks_branch_, "nhits_pot_vtpc2");
-  i_nhits_pot_mtpc_ = VarId(tracks_branch_, "nhits_pot_mtpc");
-
+  auto &vtx_tracks_config = config_->GetBranchConfig(tracks_branch_);
+  dedx_field_id_ = vtx_tracks_config.GetFieldId(dedx_field_name_);
+  charge_field_id_ = vtx_tracks_config.GetFieldId("q");
+  i_dca_x_field_id_ = vtx_tracks_config.GetFieldId("dcax");
+  i_dca_y_field_id_ = vtx_tracks_config.GetFieldId("dcay");
+  i_nhits_vtpc1_ = vtx_tracks_config.GetFieldId("nhits_vtpc1");
+  i_nhits_vtpc2_ = vtx_tracks_config.GetFieldId("nhits_vtpc2");
+  i_nhits_mtpc_ = vtx_tracks_config.GetFieldId("nhits_mtpc");
+  i_nhits_pot_vtpc1_ = vtx_tracks_config.GetFieldId("nhits_pot_vtpc1");
+  i_nhits_pot_vtpc2_ = vtx_tracks_config.GetFieldId("nhits_pot_vtpc2");
+  i_nhits_pot_mtpc_ = vtx_tracks_config.GetFieldId("nhits_pot_mtpc");
 
 
   /* Output */
@@ -100,10 +100,6 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   o_nhits_pot_total_ = rec_particle_config_.GetFieldId("nhits_pot_total");
   o_nhits_ratio_ = rec_particle_config_.GetFieldId("nhits_ratio");
 
-  if (!efficiencies_.empty()) {
-    /* For the efficiency we require also centrality axis from the input */
-    i_centrality_ = VarId(efficiency_centrality_vname_);
-  }
 
   out_config_->AddBranchConfig(rec_particle_config_);
 
@@ -111,7 +107,7 @@ void PiddEdx::Init(std::map<std::string, void *> &Map) {
   out_tree_->Branch(out_branch_.c_str(), &rec_particles_);
 }
 
-void PiddEdx::Exec() {
+void PiddEdx::UserExec() {
 
   auto &particle_config = rec_particle_config_;
 
@@ -224,3 +220,4 @@ void PiddEdx::InitEfficiencyDefinitions() {
   }
 
 }
+
