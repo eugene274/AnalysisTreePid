@@ -55,9 +55,9 @@ struct PidMatching::ChargedHadronsEfficiencyStruct {
   TEfficiency *eta_pt_vtx_tracks{nullptr};
   TEfficiency *eta_pt_vtx_tracks_neg{nullptr};
   TEfficiency *eta_pt_vtx_tracks_pos{nullptr};
+  TH1 *vtx_tracks_mult{nullptr};
+  TH1 *vtx_tracks_mult_binned{nullptr};
 };
-
-
 
 boost::program_options::options_description PidMatching::GetBoostOptions() {
   namespace po = boost::program_options;
@@ -124,7 +124,6 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   mt_sim_pt_ = mt_branch->NewVariable("sim_pt", Types::kFloat);
   mt_sim_phi_ = mt_branch->NewVariable("sim_phi", Types::kFloat);
 
-
   mt_branch->Freeze();
 }
 void PidMatching::UserExec() {
@@ -141,6 +140,8 @@ void PidMatching::UserExec() {
     if (CheckVtxTrack(vtx_track))
       multiplicity++;
   }
+  charged_hadrons_efficiency->vtx_tracks_mult->Fill(multiplicity);
+  charged_hadrons_efficiency->vtx_tracks_mult_binned->Fill(multiplicity);
 
   mt_branch->ClearChannels();
   for (auto &&[vtxId, simId] : matching_ptr_->GetMatches()) {
@@ -248,7 +249,8 @@ void PidMatching::UserFinish() {
 
     /* clean-up 3d bins */
     for (int i_cell = 0; i_cell < efficiency->matched_tracks_centr_y_pt->GetNcells(); i_cell++) {
-      if (efficiency->matched_tracks_centr_y_pt->GetBinContent(i_cell) > efficiency->sim_tracks_centr_y_pt->GetBinContent(i_cell)) {
+      if (efficiency->matched_tracks_centr_y_pt->GetBinContent(i_cell)
+          > efficiency->sim_tracks_centr_y_pt->GetBinContent(i_cell)) {
         efficiency->matched_tracks_centr_y_pt->SetBinContent(i_cell, 0);
         efficiency->sim_tracks_centr_y_pt->SetBinContent(i_cell, 0);
       }
@@ -275,6 +277,8 @@ void PidMatching::UserFinish() {
 
   {
     charged_hadrons_efficiency->output_dir->cd();
+    charged_hadrons_efficiency->vtx_tracks_mult->Write();
+    charged_hadrons_efficiency->vtx_tracks_mult_binned->Write();
     charged_hadrons_efficiency->eta_pt_vtx_tracks->Write();
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg->Write();
     charged_hadrons_efficiency->eta_pt_vtx_tracks_pos->Write();
@@ -299,6 +303,27 @@ void PidMatching::InitEfficiencies() {
 
   qa_file_ = TFile::Open(qa_file_name.c_str(), "RECREATE");
 
+  auto linspace = [](size_t nb, double lo, double hi) {
+    auto result = new double[nb+1];
+    auto step = (hi - lo) / nb;
+    for (size_t i = 0; i < nb; ++i) {
+      result[i] = lo + i * step;
+    }
+    result[nb] = hi;
+    return result;
+  };
+
+
+  Int_t mult_axis_size = 7;
+  const auto mult_axis = new double[8]{0., 6., 19., 35., 60., 100., 145., 200.};
+  Int_t y_axis_size = 30;
+  const auto y_axis = linspace(30, -2., 4.);
+  Int_t eta_axis_size = 30;
+  const auto eta_axis = linspace(30, 0., 6.);
+  Int_t pt_axis_size = 15;
+  const auto pt_axis = linspace(15, 0., 3.);
+
+
   for (int pdg : {211, -211, 2212}) {
     auto qa_struct = new PidEfficiencyQAStruct;
     efficiencies.emplace(pdg, qa_struct);
@@ -308,27 +333,26 @@ void PidMatching::InitEfficiencies() {
 
     qa_struct->matched_tracks_y_pt = new TH2D("matched_tracks_y_pt",
                                               "Matched tracks;#it{y}_{CM};p_{T} (GeV/c)",
-                                              30, -2., 4.,
-                                              15, 0., 3.);
+                                              y_axis_size, y_axis,
+                                              pt_axis_size, pt_axis);
     qa_struct->sim_tracks_y_pt = (TH2 *) qa_struct->matched_tracks_y_pt->Clone("sim_tracks_y_pt");
 
     qa_struct->matched_tracks_centr_y_pt = new TH3D("matched_tracks_centr_y_pt",
                                                     "Multiplicity (Good VTX tracks);#it{y}_{CM};p_{T} (GeV/c)",
-                                                    6, 0., 300.,
-                                                    30,-2., 4.,
-                                                    15, 0., 3.);
-    qa_struct->sim_tracks_centr_y_pt = (TH3*) qa_struct->matched_tracks_centr_y_pt->Clone("sim_tracks_centr_y_pt");
+                                                    mult_axis_size, mult_axis,
+                                                    y_axis_size, y_axis,
+                                                    pt_axis_size, pt_axis);
+    qa_struct->sim_tracks_centr_y_pt = (TH3 *) qa_struct->matched_tracks_centr_y_pt->Clone("sim_tracks_centr_y_pt");
 
     qa_struct->matched_sim_sim_y_pt = new TEfficiency("matched_sim_sim_y_pt",
                                                       "N (Matched SimTracks) / N(SimTracks);#it{y}_{CM};p_{T} (GeV/c)",
-                                                      30, -2., 4.,
-                                                      15, 0., 3.);
+                                                      y_axis_size, y_axis,
+                                                      pt_axis_size, pt_axis);
     qa_struct->matched_sim_sim_centr_y_pt = new TEfficiency("matched_sim_sim_centr_y_pt",
                                                             "N (Matched SimTracks) / N(SimTracks);Centrality (%);#it{y}_{CM};p_{T} (GeV/c)",
-                                                            6,0.,300.,
-                                                            30,-2.,4.,
-                                                            15,0.,3.);
-
+                                                            mult_axis_size, mult_axis,
+                                                            y_axis_size, y_axis,
+                                                            pt_axis_size, pt_axis);
 
   }
 
@@ -337,13 +361,17 @@ void PidMatching::InitEfficiencies() {
     charged_hadrons_efficiency->output_dir = qa_file_->mkdir("efficiency_charged_hadrons", "", true);
     charged_hadrons_efficiency->eta_pt_vtx_tracks = new TEfficiency("efficiency_all_tracks",
                                                                     "N (VtxTracks) / N (Matched VtxTracks);#eta;p_{T} (GeV/c)",
-                                                                    16,0.,8.,
-                                                                    15,0.,3.);
+                                                                    eta_axis_size, eta_axis,
+                                                                    pt_axis_size, pt_axis);
     charged_hadrons_efficiency->eta_pt_vtx_tracks->SetMarkerSize(0.5);
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg =
         (TEfficiency *) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_neg");
     charged_hadrons_efficiency->eta_pt_vtx_tracks_pos =
         (TEfficiency *) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_pos");
+    charged_hadrons_efficiency->vtx_tracks_mult = new TH1I("vtx_tracks_mult", "Vtx tracks (Standard cuts) multiplicity",
+                                                           300, 0, 300);
+    charged_hadrons_efficiency->vtx_tracks_mult_binned = new TH1I("vtx_tracks_mult_binned", "",
+                                                                  mult_axis_size, mult_axis);
   }
 
 
