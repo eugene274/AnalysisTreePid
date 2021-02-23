@@ -37,6 +37,8 @@ boost::program_options::options_description EvalEfficiency::GetBoostOptions() {
           "Name of variable with y_{CM} (float)")
       ("var-pt", value(&var_pt_name_)->default_value("pT"),
           "Name of variable of with transverse momentum")
+      ("weight-name", value(&efficiency_field_name_)->default_value("weight_efficiency"),
+          "Name of the variable with efficiency weight")
       ;
   return desc;
 }
