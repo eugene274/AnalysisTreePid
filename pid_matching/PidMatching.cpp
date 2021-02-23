@@ -316,12 +316,12 @@ void PidMatching::InitEfficiencies() {
 
   Int_t mult_axis_size = 6;
   const auto mult_axis = linspace(6, 0., 300.);
-  Int_t y_axis_size = 30;
-  const auto y_axis = linspace(30, -2., 4.);
-  Int_t eta_axis_size = 30;
-  const auto eta_axis = linspace(30, 0., 6.);
-  Int_t pt_axis_size = 15;
-  const auto pt_axis = linspace(15, 0., 3.);
+  Int_t y_axis_size = 120;
+  const auto y_axis = linspace(y_axis_size, -2., 4.);
+  Int_t eta_axis_size = 120;
+  const auto eta_axis = linspace(eta_axis_size, 0., 6.);
+  Int_t pt_axis_size = 60;
+  const auto pt_axis = linspace(pt_axis_size, 0., 3.);
 
 
   for (int pdg : {211, -211, 2212}) {
