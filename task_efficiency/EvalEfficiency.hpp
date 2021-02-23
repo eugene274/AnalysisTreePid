@@ -19,17 +19,18 @@ class EvalEfficiency : public UserFillTask {
   void UserFinish() override;
 
  private:
-  void LoadEfficiencyFromSource();
 
   std::string target_branch_name_;
   std::string efficiency_src_file_name_;
   std::string efficiency_field_name_;
   std::string new_branch_name_;
+  double efficiency_eps_threshold{0.01};
 
   std::string var_centrality_name_;
   std::string var_pid_name_;
   std::string var_y_cm_name_;
   std::string var_pt_name_;
+
 
   ATI2::Branch *rec_particles_branch;
 
@@ -39,6 +40,12 @@ class EvalEfficiency : public UserFillTask {
   ATI2::Variable pid_v;
   ATI2::Variable y_cm_v;
   ATI2::Variable pt_v;
+  ATI2::Variable weight_v;
+
+  void LoadEfficiencies();
+  struct Efficiency;
+  std::map<int, std::shared_ptr<Efficiency>> efficiencies_;
+
  TASK_DEF(EvalEfficiency, 0)
 };
 
