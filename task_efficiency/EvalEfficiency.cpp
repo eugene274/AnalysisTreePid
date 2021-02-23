@@ -51,7 +51,6 @@ void EvalEfficiency::PostFinish() {
 void EvalEfficiency::UserInit(std::map<std::string, void *> &map) {
 
   /// INPUT
-  vtx_tracks_branch = GetInBranch("VtxTracks");
   rec_particles_branch = GetInBranch(target_branch_name_);
 
   /// OUTPUT
