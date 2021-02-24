@@ -24,7 +24,7 @@ class EvalEfficiency : public UserFillTask {
   std::string efficiency_src_file_name_;
   std::string efficiency_field_name_;
   std::string new_branch_name_;
-  double efficiency_eps_threshold{0.01};
+  double efficiency_eps_threshold{0.05};
 
   std::string var_centrality_name_;
   std::string var_pid_name_;
