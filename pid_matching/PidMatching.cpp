@@ -23,7 +23,7 @@
 bool PidMatching::opts_loaded = false;
 std::string PidMatching::qa_file_name = "efficiency.root";
 bool PidMatching::save_canvases = false;
-std::string PidMatching::validate_file="";
+std::string PidMatching::validate_file = "";
 
 TASK_IMPL(PidMatching_NoCuts)
 TASK_IMPL(PidMatching_StandardCuts)
@@ -148,7 +148,7 @@ void PidMatching::InitEfficiencies() {
   qa_file_ = TFile::Open(qa_file_name.c_str(), "RECREATE");
 
   auto linspace = [](size_t nb, double lo, double hi) {
-    auto result = new double[nb+1];
+    auto result = new double[nb + 1];
     auto step = (hi - lo) / nb;
     for (size_t i = 0; i < nb; ++i) {
       result[i] = lo + i * step;
@@ -156,7 +156,6 @@ void PidMatching::InitEfficiencies() {
     result[nb] = hi;
     return result;
   };
-
 
   Int_t mult_axis_size = 6;
   const auto mult_axis = linspace(6, 0., 300.);
@@ -166,7 +165,6 @@ void PidMatching::InitEfficiencies() {
   const auto eta_axis = linspace(eta_axis_size, 0., 6.);
   Int_t pt_axis_size = 60;
   const auto pt_axis = linspace(pt_axis_size, 0., 3.);
-
 
   for (int pdg : {211, -211, 2212}) {
     auto qa_struct = new PidEfficiencyQAStruct;
@@ -194,9 +192,12 @@ void PidMatching::InitEfficiencies() {
                                                       pt_axis_size, pt_axis);
     qa_struct->matched_sim_sim_centr_y_pt = new TEfficiency("matched_sim_sim_centr_y_pt",
                                                             "N (Matched SimTracks) / N(SimTracks);Centrality (%);#it{y}_{CM};p_{T} (GeV/c)",
-                                                            mult_axis_size, mult_axis,
-                                                            y_axis_size, y_axis,
-                                                            pt_axis_size, pt_axis);
+                                                            mult_axis_size,
+                                                            mult_axis,
+                                                            y_axis_size,
+                                                            y_axis,
+                                                            pt_axis_size,
+                                                            pt_axis);
 
     if (!validate_file.empty()) {
       auto validate_struct = std::make_shared<ValidateEfficiencyStruct>();
@@ -206,8 +207,9 @@ void PidMatching::InitEfficiencies() {
                                                             "Vtx tracks (efficiency weighted);#it{y}_{CM};p_{T} (GeV/c)",
                                                             y_axis_size, y_axis,
                                                             pt_axis_size, pt_axis);
-      validate_struct->vtx_tracks_y_pt_wvtx_sim = (TH2 *) validate_struct->vtx_tracks_y_pt_wmsim_sim->Clone("vtx_tracks_y_pt_wvtx_sim");
-      validate_struct->sim_tracks_y_pt = (TH2*) validate_struct->vtx_tracks_y_pt_wmsim_sim->Clone("sim_tracks_y_pt");
+      validate_struct->vtx_tracks_y_pt_wvtx_sim =
+          (TH2 *) validate_struct->vtx_tracks_y_pt_wmsim_sim->Clone("vtx_tracks_y_pt_wvtx_sim");
+      validate_struct->sim_tracks_y_pt = (TH2 *) validate_struct->vtx_tracks_y_pt_wmsim_sim->Clone("sim_tracks_y_pt");
       validate_struct->sim_tracks_y_pt->SetTitle("Sim tracks (primary);#it{y}_{CM};p_{T} (GeV/c)");
 
       TFile input_file(validate_file.c_str(), "READ");
@@ -220,7 +222,6 @@ void PidMatching::InitEfficiencies() {
       assert(validate_struct->efficiency_vtx_sim_y_pt);
       validate_struct->efficiency_msim_sim_y_pt->SetDirectory(nullptr);
 
-
       validated_efficiencies.emplace(pdg, std::move(validate_struct));
     }
   }
@@ -230,8 +231,10 @@ void PidMatching::InitEfficiencies() {
     charged_hadrons_efficiency->output_dir = qa_file_->mkdir("efficiency_charged_hadrons", "", true);
     charged_hadrons_efficiency->eta_pt_vtx_tracks = new TEfficiency("efficiency_all_tracks",
                                                                     "N (VtxTracks) / N (Matched VtxTracks);#eta;p_{T} (GeV/c)",
-                                                                    eta_axis_size, eta_axis,
-                                                                    pt_axis_size, pt_axis);
+                                                                    eta_axis_size,
+                                                                    eta_axis,
+                                                                    pt_axis_size,
+                                                                    pt_axis);
     charged_hadrons_efficiency->eta_pt_vtx_tracks->SetMarkerSize(0.5);
     charged_hadrons_efficiency->eta_pt_vtx_tracks_neg =
         (TEfficiency *) charged_hadrons_efficiency->eta_pt_vtx_tracks->Clone("eff_neg");
@@ -284,7 +287,9 @@ void PidMatching::UserExec() {
     matched_track[mt_sim_phi_] = float(sim_momentum.Phi());
 
     if (efficiencies.find(pdg) != efficiencies.end()) {
-      if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
+//      if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
+      /* For the real data checking of whether this track primary or not is not possible */
+      if (CheckVtxTrack(vtx_track)) {
         efficiencies[pdg]->matched_tracks_y_pt->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                      vtx_momentum.Pt());
         efficiencies[pdg]->matched_tracks_centr_y_pt->Fill(
@@ -295,16 +300,19 @@ void PidMatching::UserExec() {
     }
 
     if (validated_efficiencies.find(pdg) != validated_efficiencies.end()) {
+//      if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
+      /* For the real data checking of whether this track primary or not is not possible */
       if (CheckVtxTrack(vtx_track)) {
         {
           auto msim_sim = validated_efficiencies[pdg]->efficiency_msim_sim_y_pt;
           auto efficiency_msim_sim = msim_sim->GetEfficiency(
               msim_sim->FindFixBin(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                    vtx_momentum.Pt()));
-          auto weight = 1./efficiency_msim_sim;
-          weight = (weight < 100)? weight : 0.;
-          validated_efficiencies[pdg]->vtx_tracks_y_pt_wmsim_sim->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                                                       vtx_momentum.Pt(), weight);
+          auto weight = 1. / efficiency_msim_sim;
+          weight = (weight < 100) ? weight : 0.;
+          validated_efficiencies[pdg]->vtx_tracks_y_pt_wmsim_sim->Fill(
+              vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+              vtx_momentum.Pt(), weight);
         }
 
         {
@@ -312,10 +320,11 @@ void PidMatching::UserExec() {
           auto efficiency_vtx_sim = vtx_sim->GetEfficiency(
               vtx_sim->FindFixBin(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                   vtx_momentum.Pt()));
-          auto weight = 1./efficiency_vtx_sim;
-          weight = (weight < 100)? weight : 0.;
-          validated_efficiencies[pdg]->vtx_tracks_y_pt_wvtx_sim->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                                                       vtx_momentum.Pt(), weight);
+          auto weight = 1. / efficiency_vtx_sim;
+          weight = (weight < 100) ? weight : 0.;
+          validated_efficiencies[pdg]->vtx_tracks_y_pt_wvtx_sim->Fill(
+              vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+              vtx_momentum.Pt(), weight);
         }
 
       }
@@ -350,7 +359,6 @@ void PidMatching::UserExec() {
                                                           sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                           sim_momentum.Pt());
     }
-
 
     if (validated_efficiencies.find(pdg) != validated_efficiencies.end()) {
       validated_efficiencies[pdg]->sim_tracks_y_pt->Fill(
@@ -442,20 +450,21 @@ void PidMatching::UserFinish() {
     }
   }
 
-
-  for (auto && [pdg, validated_efficiency] : validated_efficiencies) {
+  for (auto &&[pdg, validated_efficiency] : validated_efficiencies) {
     validated_efficiency->output_dir->cd();
     validated_efficiency->vtx_tracks_y_pt_wmsim_sim->Write();
     validated_efficiency->vtx_tracks_y_pt_wvtx_sim->Write();
     validated_efficiency->sim_tracks_y_pt->Write();
-    validated_efficiency->vtx_sim_y_pt_wmsim_sim = (TH2*) validated_efficiency->vtx_tracks_y_pt_wmsim_sim->Clone("vtx_sim_y_pt_wmsim_sim");
+    validated_efficiency->vtx_sim_y_pt_wmsim_sim =
+        (TH2 *) validated_efficiency->vtx_tracks_y_pt_wmsim_sim->Clone("vtx_sim_y_pt_wmsim_sim");
     validated_efficiency->vtx_sim_y_pt_wmsim_sim->Divide(validated_efficiency->sim_tracks_y_pt);
     validated_efficiency->vtx_sim_y_pt_wmsim_sim->SetTitle("N(Weighted VtxTracks) / N (Primary Sim Tracks)");
     validated_efficiency->vtx_sim_y_pt_wmsim_sim->SetMinimum(0.9);
     validated_efficiency->vtx_sim_y_pt_wmsim_sim->SetMaximum(1.1);
     validated_efficiency->vtx_sim_y_pt_wmsim_sim->Write();
 
-    validated_efficiency->vtx_sim_y_pt_wvtx_sim = (TH2*) validated_efficiency->vtx_tracks_y_pt_wvtx_sim->Clone("vtx_sim_y_pt_wvtx_sim");
+    validated_efficiency->vtx_sim_y_pt_wvtx_sim =
+        (TH2 *) validated_efficiency->vtx_tracks_y_pt_wvtx_sim->Clone("vtx_sim_y_pt_wvtx_sim");
     validated_efficiency->vtx_sim_y_pt_wvtx_sim->Divide(validated_efficiency->sim_tracks_y_pt);
     validated_efficiency->vtx_sim_y_pt_wvtx_sim->SetTitle("N(Weighted VtxTracks) / N (Primary Sim Tracks)");
     validated_efficiency->vtx_sim_y_pt_wvtx_sim->SetMinimum(0.9);
