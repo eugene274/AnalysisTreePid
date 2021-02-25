@@ -118,7 +118,7 @@ class PidMatching_StandardCuts : public PidMatching {
       nhits_total > 30 && nhits_vtpc > 15 &&
       nhits_pot_total > 0 &&
       ratio_nhits_nhits_pot > 0.55 && ratio_nhits_nhits_pot < 1.1 &&
-      abs(dca_x) < 2. && dca_y < 1.;
+      abs(dca_x) < 2. && abs(dca_y) < 1.;
   }
  TASK_DEF(PidMatching_StandardCuts, 0);
 };
