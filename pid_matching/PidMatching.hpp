@@ -30,6 +30,7 @@ class PidMatching : public UserFillTask {
  private:
   struct PidEfficiencyQAStruct;
   struct ChargedHadronsEfficiencyStruct;
+  struct ValidateEfficiencyStruct;
 
   void InitEfficiencies();
 
@@ -37,13 +38,15 @@ class PidMatching : public UserFillTask {
   ATI2::Branch *vtxt_branch{nullptr};
   ATI2::Branch *simt_branch{nullptr};
 
-  std::map<int, PidEfficiencyQAStruct *> efficiencies;
+  std::map<int, std::shared_ptr<PidEfficiencyQAStruct>> efficiencies;
+  std::map<int, std::shared_ptr<ValidateEfficiencyStruct>> validated_efficiencies;
   ChargedHadronsEfficiencyStruct *charged_hadrons_efficiency{nullptr};
 
   /* CONFIG */
   static bool opts_loaded;
   static std::string qa_file_name;
   static bool save_canvases;
+  static std::string validate_file;
 
   TFile *qa_file_{nullptr};
 
