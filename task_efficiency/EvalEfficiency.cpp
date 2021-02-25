@@ -107,7 +107,7 @@ void EvalEfficiency::LoadEfficiencies() {
     auto efficiency_dir = (TDirectory *) key->ReadObj();
 
     auto efficiency = std::make_shared<Efficiency>();
-    efficiency->eff_y_pt = (TEfficiency *) efficiency_dir->Get("matched_sim_sim_y_pt");
+    efficiency->eff_y_pt = (TEfficiency *) efficiency_dir->Get("vtx_sim_y_pt");
     efficiency->eff_y_pt->SetDirectory(nullptr);
     assert(efficiency->eff_y_pt);
 
