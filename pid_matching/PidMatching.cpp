@@ -86,8 +86,6 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   matching_ptr_ = static_cast<Matching *>(map["VtxTracks2SimTracks"]);
   vtxt_branch = GetInBranch("VtxTracks");
   simt_branch = GetInBranch("SimTracks");
-  vtxt_branch->GetConfig().Print();
-  simt_branch->GetConfig().Print();
 
 
   /// SIM Tracks
@@ -107,22 +105,22 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   vtxt_charge = GetVar("VtxTracks/q");
 
   /// MATCHED TRACKS
-  mt_branch = NewBranch("MatchedVtxTracks", AnalysisTree::DetType::kParticle);
-  mt_branch->NewVariable("dcax", Types::kFloat);
-  mt_branch->NewVariable("dcay", Types::kFloat);
-  mt_branch->NewVariable("q", Types::kInteger);
+  mt_branch = NewBranch("MatchedVtxTracks", PARTICLES);
+  mt_branch->NewVariable("dcax", FLOAT);
+  mt_branch->NewVariable("dcay", FLOAT);
+  mt_branch->NewVariable("q", INTEGER);
   mt_pid = mt_branch->GetFieldVar("pid"); // internal variable
   mt_mass = mt_branch->GetFieldVar("mass"); // internal variable
-  mt_y_cm_ = mt_branch->NewVariable("y_cm", Types::kFloat);
-  mt_nhits_total_ = mt_branch->NewVariable("nhits_total", Types::kInteger);
-  mt_nhits_vtpc_ = mt_branch->NewVariable("nhits_vtpc", Types::kInteger);
-  mt_nhits_pot_total_ = mt_branch->NewVariable("nhits_pot_total", Types::kInteger);
-  mt_nhits_ratio_ = mt_branch->NewVariable("nhits_ratio", Types::kFloat);
+  mt_y_cm_ = mt_branch->NewVariable("y_cm", FLOAT);
+  mt_nhits_total_ = mt_branch->NewVariable("nhits_total", INTEGER);
+  mt_nhits_vtpc_ = mt_branch->NewVariable("nhits_vtpc", INTEGER);
+  mt_nhits_pot_total_ = mt_branch->NewVariable("nhits_pot_total", INTEGER);
+  mt_nhits_ratio_ = mt_branch->NewVariable("nhits_ratio", FLOAT);
 
   /* parameters of the matched sim track */
-  mt_sim_y_cm_ = mt_branch->NewVariable("sim_y_cm", Types::kFloat);
-  mt_sim_pt_ = mt_branch->NewVariable("sim_pt", Types::kFloat);
-  mt_sim_phi_ = mt_branch->NewVariable("sim_phi", Types::kFloat);
+  mt_sim_y_cm_ = mt_branch->NewVariable("sim_y_cm", FLOAT);
+  mt_sim_pt_ = mt_branch->NewVariable("sim_pt", FLOAT);
+  mt_sim_phi_ = mt_branch->NewVariable("sim_phi", FLOAT);
 
   mt_branch->Freeze();
 }
