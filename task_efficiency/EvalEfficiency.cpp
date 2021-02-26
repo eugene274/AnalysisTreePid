@@ -55,9 +55,7 @@ void EvalEfficiency::UserInit(std::map<std::string, void *> &map) {
 
   /// OUTPUT
   processed_branch = NewBranch(new_branch_name_, rec_particles_branch->GetConfig());
-  pid_v = processed_branch->GetFieldVar("pid");
-  y_cm_v = processed_branch->GetFieldVar(var_y_cm_name_);
-  pt_v = processed_branch->GetFieldVar(var_pt_name_);
+  std::tie(pid_v, y_cm_v, pt_v) = processed_branch->GetVars("pid", var_y_cm_name_, var_pt_name_);
   weight_v = processed_branch->NewVariable(efficiency_field_name_, FLOAT);
   processed_branch->Freeze();
 }

@@ -1,2 +1,2 @@
 add_executable(PidSimMatching PidMatching.cpp PidMatching.hpp TEfficiencyHelper.hpp PlotEfficiencies.hpp)
-target_link_libraries(PidSimMatching PUBLIC at_task_main pid_new_core)
+target_link_libraries(PidSimMatching PUBLIC at_task_main pid_new_core atpid_commons)

@@ -20,6 +20,8 @@
 #include "TEfficiencyHelper.hpp"
 #include "PlotEfficiencies.hpp"
 
+#include "VtxTrackCut.hpp"
+
 bool PidMatching::opts_loaded = false;
 std::string PidMatching::qa_file_name = "efficiency.root";
 bool PidMatching::save_canvases = false;
@@ -103,6 +105,15 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   matching_ptr_ = static_cast<Matching *>(map["VtxTracks2SimTracks"]);
   vtxt_branch = GetInBranch("VtxTracks");
   simt_branch = GetInBranch("SimTracks");
+  VtxTrackCut vtx_track_cut = {
+      .dcax_max = 2.,
+      .dcay_max = 1.,
+      .nhits_vtpc_min = 15,
+      .nhits_total_min = 30,
+      .ratio_nhits_nhits_pot_min = 0.55,
+      .ratio_nhits_nhits_pot_max = 1.10
+  };
+  vtx_track_cut.InitBranch(vtxt_branch);
 
 
   /// SIM Tracks
