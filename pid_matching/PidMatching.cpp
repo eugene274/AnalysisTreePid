@@ -117,38 +117,43 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
 
 
   /// SIM Tracks
-  sim_pdg_ = GetVar("SimTracks/pdg");
-  sim_mother_id_ = GetVar("SimTracks/mother_id");
+  simt_branch->UseFields({
+                             {"pdg", sim_pdg_},
+                             {"mother_id", sim_mother_id_},
+  });
 
   /// VTX Tracks
-  vtxt_dca_x_ = GetVar("VtxTracks/dcax");
-  vtxt_dca_y_ = GetVar("VtxTracks/dcay");
+  vtxt_branch
+      ->UseFields({
+                      {"dcax", vtxt_dca_x_},
+                      {"dcay", vtxt_dca_y_},
+                      {"nhits_vtpc1", vtxt_nhits_vtpc1_},
+                      {"nhits_vtpc2", vtxt_nhits_vtpc2_},
+                      {"nhits_mtpc", vtxt_nhits_mtpc_},
+                      {"q", vtxt_charge},
 
-  vtxt_nhits_vtpc1_ = GetVar("VtxTracks/nhits_vtpc1");
-  vtxt_nhits_vtpc2_ = GetVar("VtxTracks/nhits_vtpc2");
-  vtxt_nhits_mtpc_ = GetVar("VtxTracks/nhits_mtpc");
-  vtxt_nhits_pot_vtpc1_ = GetVar("VtxTracks/nhits_pot_vtpc1");
-  vtxt_nhits_pot_vtpc2_ = GetVar("VtxTracks/nhits_pot_vtpc2");
-  vtxt_nhits_pot_mtpc_ = GetVar("VtxTracks/nhits_pot_mtpc");
-  vtxt_charge = GetVar("VtxTracks/q");
+                      {"nhits_pot_vtpc1", vtxt_nhits_pot_vtpc1_},
+                      {"nhits_pot_vtpc2", vtxt_nhits_pot_vtpc2_},
+                      {"nhits_pot_mtpc", vtxt_nhits_pot_mtpc_},
+                  });
 
   /// MATCHED TRACKS
   mt_branch = NewBranch("MatchedVtxTracks", PARTICLES);
-  mt_branch->NewVariable("dcax", FLOAT);
-  mt_branch->NewVariable("dcay", FLOAT);
-  mt_branch->NewVariable("q", INTEGER);
-  mt_pid = mt_branch->GetFieldVar("pid"); // internal variable
-  mt_mass = mt_branch->GetFieldVar("mass"); // internal variable
+  mt_branch->CloneVariables(vtxt_branch->GetConfig());
   mt_y_cm_ = mt_branch->NewVariable("y_cm", FLOAT);
-  mt_nhits_total_ = mt_branch->NewVariable("nhits_total", INTEGER);
   mt_nhits_vtpc_ = mt_branch->NewVariable("nhits_vtpc", INTEGER);
-  mt_nhits_pot_total_ = mt_branch->NewVariable("nhits_pot_total", INTEGER);
   mt_nhits_ratio_ = mt_branch->NewVariable("nhits_ratio", FLOAT);
+  mt_branch->UseFields({
+                           {"pid", mt_pid},
+                           {"mass", mt_mass},
+  });
 
   /* parameters of the matched sim track */
   mt_sim_y_cm_ = mt_branch->NewVariable("sim_y_cm", FLOAT);
   mt_sim_pt_ = mt_branch->NewVariable("sim_pt", FLOAT);
   mt_sim_phi_ = mt_branch->NewVariable("sim_phi", FLOAT);
+
+  mt_branch->GetConfig().Print();
 
   mt_branch->Freeze();
 }
@@ -293,6 +298,9 @@ void PidMatching::UserExec() {
     matched_track[mt_pid] = pdg;
     matched_track[mt_mass] = float(sim_momentum.M());
     matched_track[mt_y_cm_] = float(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity());
+    matched_track[mt_nhits_vtpc_] = vtx_track[vtxt_nhits_vtpc1_].GetInt() + vtx_track[vtxt_nhits_vtpc2_].GetInt();
+    matched_track[mt_nhits_ratio_] = 0.0f; // FIXME
+    /* sim-related information */
     matched_track[mt_sim_y_cm_] = float(sim_momentum.Rapidity() - data_header_->GetBeamRapidity());
     matched_track[mt_sim_pt_] = float(sim_momentum.Pt());
     matched_track[mt_sim_phi_] = float(sim_momentum.Phi());
