@@ -283,6 +283,8 @@ void PidMatching::UserExec() {
   charged_hadrons_efficiency->vtx_tracks_mult->Fill(multiplicity);
   charged_hadrons_efficiency->vtx_tracks_mult_binned->Fill(multiplicity);
 
+  size_t counter_matched_good_vtx_tracks = 0;
+
   mt_branch->ClearChannels();
   for (auto &&[vtxId, simId] : matching_ptr_->GetMatches()) {
     const auto vtx_track = (*vtxt_branch)[vtxId];
@@ -305,10 +307,16 @@ void PidMatching::UserExec() {
     matched_track[mt_sim_pt_] = float(sim_momentum.Pt());
     matched_track[mt_sim_phi_] = float(sim_momentum.Phi());
 
+    const bool is_good_vtx = CheckVtxTrack(vtx_track);
+
+    if (is_good_vtx) {
+      ++counter_matched_good_vtx_tracks;
+    }
+
     if (efficiencies.find(pdg) != efficiencies.end()) {
 //      if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
       /* For the real data checking of whether this track primary or not is not possible */
-      if (CheckVtxTrack(vtx_track)) {
+      if (is_good_vtx) {
         efficiencies[pdg]->matched_tracks_y_pt->Fill(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
                                                      vtx_momentum.Pt());
         efficiencies[pdg]->matched_tracks_centr_y_pt->Fill(
@@ -321,7 +329,7 @@ void PidMatching::UserExec() {
     if (validated_efficiencies.find(pdg) != validated_efficiencies.end()) {
 //      if (CheckVtxTrack(vtx_track) && CheckSimTrack(sim_track)) {
       /* For the real data checking of whether this track primary or not is not possible */
-      if (CheckVtxTrack(vtx_track)) {
+      if (is_good_vtx) {
         {
           auto msim_sim = validated_efficiencies[pdg]->efficiency_msim_sim_y_pt;
           auto efficiency_msim_sim = msim_sim->GetEfficiency(
@@ -403,8 +411,11 @@ void PidMatching::UserExec() {
   } // vtx tracks
 
 
+  cout << endl;
   cout << "Matched " << mt_branch->size() << "/" << vtxt_branch->size()
        << " vertex tracks" << endl;
+  cout << "Matched " << counter_matched_good_vtx_tracks << "/" << multiplicity
+       << " good vertex tracks" << endl;
 
 }
 void PidMatching::UserFinish() {
