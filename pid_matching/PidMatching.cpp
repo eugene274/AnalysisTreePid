@@ -120,7 +120,7 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   simt_branch->UseFields({
                              {"pdg", sim_pdg_},
                              {"mother_id", sim_mother_id_},
-  });
+                         });
 
   /// VTX Tracks
   vtxt_branch
@@ -130,15 +130,14 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
                       {"nhits_vtpc1", vtxt_nhits_vtpc1_},
                       {"nhits_vtpc2", vtxt_nhits_vtpc2_},
                       {"nhits_mtpc", vtxt_nhits_mtpc_},
-                      {"q", vtxt_charge},
-
                       {"nhits_pot_vtpc1", vtxt_nhits_pot_vtpc1_},
                       {"nhits_pot_vtpc2", vtxt_nhits_pot_vtpc2_},
                       {"nhits_pot_mtpc", vtxt_nhits_pot_mtpc_},
+                      {"q", vtxt_charge},
                   });
 
   /// MATCHED TRACKS
-  mt_branch = NewBranch("MatchedVtxTracks", PARTICLES);
+  mt_branch = NewBranch("RecParticles", PARTICLES);
   mt_branch->CloneVariables(vtxt_branch->GetConfig());
   mt_y_cm_ = mt_branch->NewVariable("y_cm", FLOAT);
   mt_nhits_vtpc_ = mt_branch->NewVariable("nhits_vtpc", INTEGER);
@@ -146,14 +145,20 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   mt_branch->UseFields({
                            {"pid", mt_pid},
                            {"mass", mt_mass},
-  });
+                       });
 
   /* parameters of the matched sim track */
   mt_sim_y_cm_ = mt_branch->NewVariable("sim_y_cm", FLOAT);
   mt_sim_pt_ = mt_branch->NewVariable("sim_pt", FLOAT);
   mt_sim_phi_ = mt_branch->NewVariable("sim_phi", FLOAT);
 
-  mt_branch->GetConfig().Print();
+  /// SIM TRACKS (PROCESSED, e.g. with midrapidity calclulated)
+  simtproc_branch = NewBranch("SimTracksProc", PARTICLES);
+  simtproc_branch->CloneVariables(simt_branch->GetConfig());
+  simtproc_y_cm = simtproc_branch->NewVariable("y_cm", FLOAT);
+
+
+  vtxt_branch->GetConfig().Print();
 
   mt_branch->Freeze();
 }
@@ -301,7 +306,11 @@ void PidMatching::UserExec() {
     matched_track[mt_mass] = float(sim_momentum.M());
     matched_track[mt_y_cm_] = float(vtx_momentum.Rapidity() - data_header_->GetBeamRapidity());
     matched_track[mt_nhits_vtpc_] = vtx_track[vtxt_nhits_vtpc1_].GetInt() + vtx_track[vtxt_nhits_vtpc2_].GetInt();
-    matched_track[mt_nhits_ratio_] = 0.0f; // FIXME
+    matched_track[mt_nhits_ratio_] =
+        float(vtx_track[vtxt_nhits_vtpc1_].GetInt() + vtx_track[vtxt_nhits_vtpc2_].GetInt()
+                  + vtx_track[vtxt_nhits_mtpc_].GetInt()) /
+            float(vtx_track[vtxt_nhits_pot_vtpc1_].GetInt() + vtx_track[vtxt_nhits_pot_vtpc2_].GetInt()
+                      + vtx_track[vtxt_nhits_pot_mtpc_].GetInt());
     /* sim-related information */
     matched_track[mt_sim_y_cm_] = float(sim_momentum.Rapidity() - data_header_->GetBeamRapidity());
     matched_track[mt_sim_pt_] = float(sim_momentum.Pt());
@@ -362,35 +371,33 @@ void PidMatching::UserExec() {
   const auto match_inv = matching_ptr_->GetMatches(true);
   const auto match = matching_ptr_->GetMatches();
 
+  simtproc_branch->ClearChannels();
   for (const auto &sim_track : simt_branch->Loop()) {
+    auto pdg = sim_track[sim_pdg_].GetInt();
+    sim_momentum.SetVectM(sim_track.DataT<Particle>()->GetMomentum3(), PdgHelper::mass(pdg));
+
+    const auto y_cm = sim_momentum.Rapidity() - data_header_->GetBeamRapidity();
+
+    auto simtproc_particle = simtproc_branch->NewChannel();
+    simtproc_particle.CopyContents(sim_track);
+    simtproc_particle[simtproc_y_cm] = float(y_cm);
 
     if (!CheckSimTrack(sim_track)) continue;
 
-    auto pdg = sim_track[sim_pdg_].GetInt();
     if (efficiencies.find(pdg) != efficiencies.end()) {
-      sim_momentum.SetVectM(sim_track.DataT<Particle>()->GetMomentum3(), PdgHelper::mass(pdg));
-      efficiencies[pdg]->sim_tracks_y_pt->Fill(sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                               sim_momentum.Pt());
+      efficiencies[pdg]->sim_tracks_y_pt->Fill(y_cm, sim_momentum.Pt());
       efficiencies[pdg]->sim_tracks_centr_y_pt->Fill(
-          multiplicity,
-          sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-          sim_momentum.Pt());
+          multiplicity,y_cm, sim_momentum.Pt());
 
       auto has_matched_vtx_track = match_inv.find(sim_track.GetNChannel()) != match_inv.end()
           && CheckVtxTrack((*vtxt_branch)[match_inv.at(sim_track.GetNChannel())]);
-      efficiencies[pdg]->matched_sim_sim_y_pt->Fill(has_matched_vtx_track,
-                                                    sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                                    sim_momentum.Pt());
+      efficiencies[pdg]->matched_sim_sim_y_pt->Fill(has_matched_vtx_track,y_cm, sim_momentum.Pt());
       efficiencies[pdg]->matched_sim_sim_centr_y_pt->Fill(has_matched_vtx_track,
-                                                          multiplicity,
-                                                          sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-                                                          sim_momentum.Pt());
+                                                          multiplicity,y_cm, sim_momentum.Pt());
     }
 
     if (validated_efficiencies.find(pdg) != validated_efficiencies.end()) {
-      validated_efficiencies[pdg]->sim_tracks_y_pt->Fill(
-          sim_momentum.Rapidity() - data_header_->GetBeamRapidity(),
-          sim_momentum.Pt());
+      validated_efficiencies[pdg]->sim_tracks_y_pt->Fill(y_cm, sim_momentum.Pt());
     }
   } // sim tracks
 

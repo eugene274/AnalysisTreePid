@@ -78,6 +78,9 @@ class PidMatching : public UserFillTask {
 
   ATI2::Variable sim_mother_id_;
   ATI2::Variable sim_pdg_;
+
+  ATI2::Branch *simtproc_branch;
+  ATI2::Variable simtproc_y_cm;
 };
 
 class PidMatching_NoCuts : public PidMatching {
