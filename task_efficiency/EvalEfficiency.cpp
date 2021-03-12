@@ -49,7 +49,7 @@ void EvalEfficiency::PostFinish() {
   UserTask::PostFinish();
 }
 void EvalEfficiency::UserInit(std::map<std::string, void *> &map) {
-
+  BypassBranches();
   /// INPUT
   rec_particles_branch = GetInBranch(target_branch_name_);
 
