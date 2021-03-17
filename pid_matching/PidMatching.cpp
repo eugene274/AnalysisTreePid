@@ -153,6 +153,7 @@ void PidMatching::UserInit(std::map<std::string, void *> &map) {
   mt_sim_y_cm_ = mt_branch->NewVariable("sim_y_cm", FLOAT);
   mt_sim_pt_ = mt_branch->NewVariable("sim_pt", FLOAT);
   mt_sim_phi_ = mt_branch->NewVariable("sim_phi", FLOAT);
+  mt_sim_mother_id_ = mt_branch->NewVariable("sim_mother_id", INTEGER);
 
   /// SIM TRACKS (PROCESSED, e.g. with midrapidity calclulated)
   simtproc_branch = NewBranch("SimTracksProc", PARTICLES);
@@ -321,6 +322,7 @@ void PidMatching::UserExec() {
     matched_track[mt_sim_y_cm_] = float(sim_momentum.Rapidity() - data_header_->GetBeamRapidity());
     matched_track[mt_sim_pt_] = float(sim_momentum.Pt());
     matched_track[mt_sim_phi_] = float(sim_momentum.Phi());
+    matched_track[mt_sim_mother_id_] = sim_track[sim_mother_id_];
 
     const bool is_good_vtx = CheckVtxTrack(vtx_track);
 

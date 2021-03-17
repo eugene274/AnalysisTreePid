@@ -75,6 +75,7 @@ class PidMatching : public UserFillTask {
   ATI2::Variable mt_sim_y_cm_;
   ATI2::Variable mt_sim_pt_;
   ATI2::Variable mt_sim_phi_;
+  ATI2::Variable mt_sim_mother_id_;
 
   ATI2::Variable sim_mother_id_;
   ATI2::Variable sim_pdg_;
