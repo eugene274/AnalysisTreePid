@@ -50,6 +50,8 @@ struct PidMatching::PidEfficiencyQAStruct {
   TEfficiency *vtx_sim_centr_y_pt{nullptr};
   TEfficiency *matched_sim_sim_centr_y_pt{nullptr};
 
+  TEfficiency *matched_vtx_primary_y_pt{nullptr};
+
 };
 
 struct PidMatching::ValidateEfficiencyStruct {
@@ -211,6 +213,10 @@ void PidMatching::InitEfficiencies() {
                                                       "N (Matched SimTracks) / N(SimTracks);#it{y}_{CM};p_{T} (GeV/c)",
                                                       y_axis_size, y_axis,
                                                       pt_axis_size, pt_axis);
+    qa_struct->matched_vtx_primary_y_pt = (TEfficiency *) qa_struct->matched_sim_sim_y_pt->
+        Clone("matched_vtx_primary_y_pt");
+    qa_struct->matched_vtx_primary_y_pt->SetTitle("N (Primary Vtx tracks) / N (Vtx tracks) (after selection)");
+
     qa_struct->matched_sim_sim_centr_y_pt = new TEfficiency("matched_sim_sim_centr_y_pt",
                                                             "N (Matched SimTracks) / N(SimTracks);Centrality (%);#it{y}_{CM};p_{T} (GeV/c)",
                                                             mult_axis_size,
@@ -332,6 +338,10 @@ void PidMatching::UserExec() {
             multiplicity,
             vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
             vtx_momentum.Pt());
+        efficiencies[pdg]->matched_vtx_primary_y_pt->Fill(
+            sim_track[sim_mother_id_].GetInt() == -1,
+            vtx_momentum.Rapidity() - data_header_->GetBeamRapidity(),
+            vtx_momentum.Pt());
       }
     }
 
@@ -438,6 +448,7 @@ void PidMatching::UserFinish() {
     efficiency->sim_tracks_centr_y_pt->Write();
 
     efficiency->matched_sim_sim_centr_y_pt->Write();
+    efficiency->matched_vtx_primary_y_pt->Write();
 
     /* clean-up bins */
     for (int i_cell = 0; i_cell < efficiency->matched_tracks_y_pt->GetNcells(); i_cell++) {
