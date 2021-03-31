@@ -77,7 +77,7 @@ void EvalEfficiency::UserExec() {
       auto err_lo = eff_y_pt->GetEfficiencyErrorLow(eff_y_pt->FindFixBin(y_cm, pt));
       auto err_hi = eff_y_pt->GetEfficiencyErrorUp(eff_y_pt->FindFixBin(y_cm, pt));
       auto efficiency_eps = (err_hi + err_lo)/eff_y_pt_val;
-      auto weight_val = efficiency_eps < efficiency_eps_threshold ? float(1./eff_y_pt_val) : 0.0f;
+      auto weight_val = efficiency_eps < efficiency_eps_threshold ? float(1./eff_y_pt_val) : 1.0f;
       processed_particle[weight_v] = weight_val;
     }
   }
