@@ -8,7 +8,7 @@ include(FetchContent)
 FetchContent_Declare(
         ATTaskSkeleton
         GIT_REPOSITORY git@github.com:eugene274/AnalysisTreeTaskSkeleton.git
-        GIT_TAG        0.7.0
+        GIT_TAG        0.9.1
 )
 
 FetchContent_MakeAvailable(ATTaskSkeleton)

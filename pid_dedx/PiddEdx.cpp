@@ -77,7 +77,8 @@ void PiddEdx::UserInit(std::map<std::string, void *> &Map) {
   i_nhits_pot_vtpc1_ = vtx_tracks_config.GetFieldId("nhits_pot_vtpc1");
   i_nhits_pot_vtpc2_ = vtx_tracks_config.GetFieldId("nhits_pot_vtpc2");
   i_nhits_pot_mtpc_ = vtx_tracks_config.GetFieldId("nhits_pot_mtpc");
-
+  i_chi2 = vtx_tracks_config.GetFieldId("chi2");
+  i_ndf = vtx_tracks_config.GetFieldId("ndf");
 
   /* Output */
   rec_particle_config_ = AnalysisTree::BranchConfig(out_branch_, AnalysisTree::DetType::kParticle);
@@ -100,6 +101,8 @@ void PiddEdx::UserInit(std::map<std::string, void *> &Map) {
   o_nhits_pot_total_ = rec_particle_config_.GetFieldId("nhits_pot_total");
   o_nhits_ratio_ = rec_particle_config_.GetFieldId("nhits_ratio");
 
+  rec_particle_config_.AddField<float>("chi2_ndf");
+  o_chi2_ndf = rec_particle_config_.GetFieldId("chi2_ndf");
 
   out_config_->AddBranchConfig(rec_particle_config_);
 
@@ -139,7 +142,7 @@ void PiddEdx::UserExec() {
       /* dca_x, dca_y */
       particle->SetField<float>(track.GetField<float>(i_dca_x_field_id_), o_dca_x_field_id_);
       particle->SetField<float>(track.GetField<float>(i_dca_y_field_id_), o_dca_y_field_id_);
-
+      particle->SetField<float>(track.GetField<float>(i_chi2)/track.GetField<int>(i_ndf), o_chi2_ndf);
       /* nhits and ratio */
       {
         int nhits_total = track.GetField<int>(i_nhits_vtpc1_) +

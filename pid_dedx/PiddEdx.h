@@ -69,6 +69,9 @@ private:
   short o_dca_y_field_id_;
   short i_dca_y_field_id_;
   short i_dca_x_field_id_;
+  short i_chi2;
+  short i_ndf;
+  short o_chi2_ndf;
   short o_nhits_total_;
   short o_nhits_pot_total_;
   short o_nhits_ratio_;
@@ -82,6 +85,8 @@ private:
 
   short y_field_id_;
 TASK_DEF(PiddEdx, 0)
+
+
 };
 
 #endif //ATPIDTASK_PID_DEDX_PIDDEDX_H
